@@ -101,7 +101,7 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
 .stat-lbl{font-size:11px;color:var(--text2);margin-top:3px}
 .stat.highlight .stat-lbl{color:rgba(255,255,255,.6)}
 .section-title{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
-.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.actions-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
 .act-btn{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem .75rem;text-align:center;cursor:pointer;transition:border-color .15s,background .12s}
 .act-btn:active{background:var(--surface2)}
 .act-btn.disabled{opacity:.4;pointer-events:none}
@@ -389,7 +389,8 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
     <div class="frow"><label>Nombre de usuario</label><input id="new-username" placeholder="Ej: juan (sin espacios)"></div>
     <div class="frow"><label>Rol</label>
       <select id="new-role">
-        <option value="admin">Admin — acceso total</option>
+        <option value="admin">Admin — acceso total + gestión usuarios</option>
+        <option value="supervisor">Supervisor — acceso total sin gestión usuarios</option>
         <option value="consulta">Consulta — solo lectura + cambiar taller</option>
       </select>
     </div>
@@ -545,17 +546,25 @@ async function startApp(){
   document.getElementById('appScreen').style.display='flex';
   document.getElementById('userChip').textContent=currentUser.user;
   isAdmin=currentUser.role==='admin';
+  const isSupervisor = currentUser.role==='supervisor';
   const isConsulta = currentUser.role==='consulta';
-  const canChangeTaller = isAdmin || isConsulta;
+  const canWrite = isAdmin || isSupervisor;
+  const canChangeTaller = canWrite || isConsulta;
   window.canChangeTaller = canChangeTaller;
-  document.getElementById('btnIngreso').classList.toggle('disabled',!isAdmin);
-  document.getElementById('btnSalida').classList.toggle('disabled',!isAdmin);
-  document.getElementById('btnIngreso').style.opacity = isAdmin ? '1' : '0.35';
-  document.getElementById('btnSalida').style.opacity = isAdmin ? '1' : '0.35';
+  window.canWrite = canWrite;
+
+  // Show/hide action buttons based on role
+  document.getElementById('btnIngreso').style.display = canWrite ? '' : 'none';
+  document.getElementById('btnSalida').style.display = canWrite ? '' : 'none';
   document.getElementById('iIngreso').value=today();
-  document.querySelectorAll('#btnImport').forEach(b=>b.style.display=isAdmin?'block':'none');
+  document.querySelectorAll('#btnImport').forEach(b=>b.style.display=canWrite?'block':'none');
+
+  // Admin-only: users panel tab
   const adminNav = document.getElementById('bnav-admin');
   if(adminNav) adminNav.style.display = isAdmin ? 'flex' : 'none';
+
+  // Reporte visible for all roles
+  // Pendientes visible for all roles
   const userLabel = isAdmin ? 'Admin' : isConsulta ? 'Consulta' : currentUser.user;
   document.getElementById('userChip').textContent = currentUser.display || currentUser.user;
   await loadStats();
@@ -588,6 +597,13 @@ function subscribeRealtime(){
 }
 
 window.showPanel = function(name){
+  // Block restricted panels for consulta
+  if(!window.canWrite && (name==='ingreso'||name==='salida'||name==='import')){
+    showToast('No tienes permiso para esta acción','err');return;
+  }
+  if(!isAdmin && name==='admin'){
+    showToast('Solo el administrador puede gestionar usuarios','err');return;
+  }
   document.getElementById('homeView').style.display='none';
   ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelAdmin'].forEach(id=>{
     document.getElementById(id).classList.remove('active');
@@ -913,7 +929,7 @@ async function loadUsersPanel(){
     <div class="result-card" style="margin-bottom:10px">
       <div class="rc-top">
         <span style="font-weight:600;font-size:15px">${u.display_name||u.username}</span>
-        <span class="badge ${u.role==='admin'?'b-activo':'b-na'}">${u.role==='admin'?'Admin':'Consulta'}</span>
+        <span class="badge ${u.role==='admin'?'b-activo':u.role==='supervisor'?'b-pintura':'b-na'}">${u.role==='admin'?'Admin':u.role==='supervisor'?'Supervisor':'Consulta'}</span>
       </div>
       <div class="rc-rows">
         <div class="rc-row"><span>Usuario</span><span style="font-family:'DM Mono',monospace">${u.username}</span></div>
