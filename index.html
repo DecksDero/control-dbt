@@ -259,13 +259,13 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
         </div>
         <div class="act-label">Buscar patente</div>
       </div>
-      <div class="act-btn disabled" id="btnIngreso" onclick="showPanel('ingreso')">
+      <div class="act-btn" id="btnIngreso" onclick="showPanel('ingreso')">
         <div class="act-icon" style="background:#E3FCEF">
           <svg viewBox="0 0 24 24" stroke="#057A55"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </div>
         <div class="act-label">Agregar ingreso</div>
       </div>
-      <div class="act-btn disabled" id="btnSalida" onclick="showPanel('salida')">
+      <div class="act-btn" id="btnSalida" onclick="showPanel('salida')">
         <div class="act-icon" style="background:#FDE8E8">
           <svg viewBox="0 0 24 24" stroke="#C81E1E"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </div>
@@ -544,7 +544,7 @@ window.doLogout = function(){
 async function startApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appScreen').style.display='flex';
-  document.getElementById('userChip').textContent=currentUser.user;
+  document.getElementById('userChip').textContent=currentUser.display||currentUser.user;
   isAdmin=currentUser.role==='admin';
   const isSupervisor = currentUser.role==='supervisor';
   const isConsulta = currentUser.role==='consulta';
