@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Control Taller">
+<meta name="theme-color" content="#F5F4F0">
+<title>Control de Vehículos</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root {
+  --bg: #F5F4F0;
+  --surface: #FFFFFF;
+  --surface2: #EEECEA;
+  --border: rgba(0,0,0,0.1);
+  --border2: rgba(0,0,0,0.18);
+  --text: #1A1917;
+  --text2: #6B6860;
+  --text3: #9E9C97;
+  --blue: #1A56DB;
+  --blue-bg: #EBF0FF;
+  --blue-text: #1A3A8F;
+  --green: #057A55;
+  --green-bg: #E3FCEF;
+  --green-text: #014737;
+  --red: #C81E1E;
+  --red-bg: #FDE8E8;
+  --red-text: #771D1D;
+  --amber: #92400E;
+  --amber-bg: #FEF3C7;
+  --amber-text: #78350F;
+  --purple: #5521B5;
+  --purple-bg: #EDEBFE;
+  --purple-text: #4A1D96;
+  --gray-bg: #F3F4F6;
+  --gray-text: #374151;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);font-size:15px;line-height:1.5}
+input,select,textarea,button{font-family:'DM Sans',sans-serif}
+
+/* LOGIN */
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:var(--bg)}
+.login-box{width:100%;max-width:360px;background:var(--surface);border-radius:20px;border:1px solid var(--border);padding:2rem 1.75rem}
+.login-logo{width:44px;height:44px;background:var(--text);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem}
+.login-logo svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
+.login-box h1{font-size:20px;font-weight:600;margin-bottom:.25rem}
+.login-box p{font-size:13px;color:var(--text2);margin-bottom:1.5rem}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field input,.field select{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:15px;color:var(--text);outline:none;width:100%;-webkit-appearance:none}
+.field input:focus,.field select:focus{border-color:var(--blue);background:#fff}
+.err{font-size:13px;color:var(--red);margin-bottom:10px;min-height:18px}
+.big-btn{width:100%;padding:12px;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.big-btn:active{opacity:.8}
+.btn-dark{background:var(--text);color:#fff}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-red{background:var(--red);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+
+/* APP */
+.app-screen{display:none;flex-direction:column;height:100vh;max-width:480px;margin:0 auto}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-logo{width:32px;height:32px;background:var(--text);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.topbar-logo svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
+.topbar-title{font-size:16px;font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.user-chip{font-size:12px;color:var(--text2);background:var(--surface2);padding:4px 10px;border-radius:20px}
+.logout-btn{background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;padding:4px 8px}
+
+/* HOME */
+.home-view{flex:1;overflow-y:auto;padding:16px 16px 100px}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 8px;text-align:center}
+.stat.highlight{background:var(--text);border-color:var(--text)}
+.stat-val{font-size:22px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);line-height:1}
+.stat.highlight .stat-val{color:#fff}
+.stat-lbl{font-size:11px;color:var(--text2);margin-top:3px}
+.stat.highlight .stat-lbl{color:rgba(255,255,255,.6)}
+.section-title{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.act-btn{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem .75rem;text-align:center;cursor:pointer;transition:border-color .15s,background .12s}
+.act-btn:active{background:var(--surface2)}
+.act-btn.disabled{opacity:.4;pointer-events:none}
+.act-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem}
+.act-icon svg{width:20px;height:20px;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.act-label{font-size:13px;font-weight:500}
+
+/* PANELS */
+.panel{display:none;flex:1;overflow-y:auto;padding:16px 16px 100px}
+.panel.active{display:block}
+.panel-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.back-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer}
+.panel-header h2{font-size:17px;font-weight:600}
+
+/* SEARCH */
+.search-wrap{position:relative;margin-bottom:14px}
+.search-wrap input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px 11px 40px;font-size:15px;outline:none;color:var(--text)}
+.search-wrap input:focus{border-color:var(--blue)}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round}
+.result-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px}
+.rc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.rc-pat{font-family:'DM Mono',monospace;font-size:17px;font-weight:500;letter-spacing:.5px}
+.rc-rows{display:flex;flex-direction:column;gap:6px}
+.rc-row{display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.rc-row span:first-child{color:var(--text2)}
+.rc-obs{font-size:12px;color:var(--text2);background:var(--surface2);border-radius:6px;padding:8px 10px;margin-top:10px;line-height:1.5}
+.rc-actions{margin-top:10px;display:flex;gap:8px}
+.rc-act-btn{flex:1;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);font-size:13px;font-weight:500;cursor:pointer;color:var(--text)}
+.rc-act-btn.blue{background:var(--blue-bg);color:var(--blue-text);border-color:transparent}
+
+/* PRESUPUESTO STATUS BADGE */
+.presup-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-top:8px;width:100%;justify-content:center}
+.presup-pendiente{background:var(--amber-bg);color:var(--amber-text)}
+.presup-con-datos{background:var(--blue-bg);color:var(--blue-text)}
+.presup-enviado{background:var(--green-bg);color:var(--green-text)}
+.presup-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+/* CAMBIO TALLER */
+.cambio-box{background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-top:10px}
+.cambio-box p{font-size:13px;margin-bottom:10px;color:var(--text2)}
+.frow{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.frow label{font-size:12px;font-weight:500;color:var(--text2)}
+.frow input,.frow select,.frow textarea{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-size:15px;color:var(--text);outline:none;-webkit-appearance:none}
+.frow input:focus,.frow select:focus{border-color:var(--blue)}
+.frow textarea{resize:none;height:80px}
+
+/* SALIDA */
+.sal-item{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.sal-item:active,.sal-item.selected{border-color:var(--blue);background:var(--blue-bg)}
+.sal-pat{font-family:'DM Mono',monospace;font-size:15px;font-weight:500}
+.sal-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.confirm-box{background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-top:12px}
+.confirm-box p{font-size:14px;margin-bottom:12px}
+.confirm-box strong{font-weight:600}
+
+/* IMPORT */
+.import-box{background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px}
+.import-box p{font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.5}
+.import-progress{font-size:13px;color:var(--text2);padding:8px 0}
+
+/* BADGE */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.b-pintura{background:var(--blue-bg);color:var(--blue-text)}
+.b-rildo{background:var(--green-bg);color:var(--green-text)}
+.b-terminacion{background:var(--amber-bg);color:var(--amber-text)}
+.b-na{background:var(--gray-bg);color:var(--gray-text)}
+.b-activo{background:var(--green-bg);color:var(--green-text)}
+.b-salida{background:var(--red-bg);color:var(--red-text)}
+
+/* BOTTOM NAV */
+.bottom-nav{display:flex;border-top:1px solid var(--border);background:var(--surface);padding:8px 0 env(safe-area-inset-bottom,8px);position:sticky;bottom:0}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;cursor:pointer;color:var(--text3);font-size:11px;font-weight:500;background:none;border:none;transition:color .15s}
+.bnav-btn.active{color:var(--blue)}
+.bnav-icon{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+.loading{font-size:13px;color:var(--text3);padding:16px 0;text-align:center}
+.empty{font-size:13px;color:var(--text3);padding:24px 0;text-align:center}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--text);color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all .25s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--red)}
+.toast.ok{background:var(--green)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </div>
+    <h1>Control de Vehículos</h1>
+    <p>Ingresa con tu usuario</p>
+    <div class="field"><label>Usuario</label><input id="lu" placeholder="admin / trabajador" autocomplete="username"></div>
+    <div class="field"><label>Contraseña</label><input id="lp" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="err" id="lerr"></div>
+    <button class="big-btn btn-dark" onclick="doLogin()">Ingresar</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app-screen" id="appScreen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <span class="topbar-title">Taller DBT</span>
+    </div>
+    <div class="topbar-right">
+      <span class="user-chip" id="userChip"></span>
+      <button class="logout-btn" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div class="home-view" id="homeView">
+    <div class="section-title">Vehículos en taller</div>
+    <div class="stats-row" id="statsRow"></div>
+    <div class="section-title">Acciones</div>
+    <div class="actions-grid">
+      <div class="act-btn" onclick="showPanel('search')">
+        <div class="act-icon" style="background:#EBF0FF">
+          <svg viewBox="0 0 24 24" stroke="#1A56DB"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <div class="act-label">Buscar patente</div>
+      </div>
+      <div class="act-btn disabled" id="btnIngreso" onclick="showPanel('ingreso')">
+        <div class="act-icon" style="background:#E3FCEF">
+          <svg viewBox="0 0 24 24" stroke="#057A55"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+        <div class="act-label">Agregar ingreso</div>
+      </div>
+      <div class="act-btn disabled" id="btnSalida" onclick="showPanel('salida')">
+        <div class="act-icon" style="background:#FDE8E8">
+          <svg viewBox="0 0 24 24" stroke="#C81E1E"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </div>
+        <div class="act-label">Asignar salida</div>
+      </div>
+      <div class="act-btn" id="btnPendientes" onclick="showPanel('pendientes')">
+        <div class="act-icon" style="background:#EDEBFE">
+          <svg viewBox="0 0 24 24" stroke="#5521B5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </div>
+        <div class="act-label">Presupuestos</div>
+      </div>
+    </div>
+    <button id="btnImport" onclick="showPanel('import')" style="display:none;width:100%;padding:10px;border:1px dashed var(--border2);border-radius:var(--radius-sm);background:transparent;font-size:13px;color:var(--text2);cursor:pointer;margin-top:8px">Importar datos históricos</button>
+  </div>
+
+  <!-- PANEL BUSCAR -->
+  <div class="panel" id="panelSearch">
+    <div class="panel-header">
+      <button class="back-btn" onclick="closePanel()">← Volver</button>
+      <h2>Buscar patente</h2>
+    </div>
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInput" placeholder="Ej: ABCD-12" oninput="doSearch()" autocomplete="off" style="text-transform:uppercase">
+    </div>
+    <div id="searchResults"></div>
+  </div>
+
+  <!-- PANEL INGRESO -->
+  <div class="panel" id="panelIngreso">
+    <div class="panel-header">
+      <button class="back-btn" onclick="closePanel()">← Volver</button>
+      <h2>Agregar ingreso</h2>
+    </div>
+    <div class="frow"><label>Patente</label><input id="iPatente" placeholder="ABCD-12" style="text-transform:uppercase" autocomplete="off"></div>
+    <div class="frow"><label>Taller</label>
+      <select id="iTaller">
+        <option value="PINTURA">Pintura</option>
+        <option value="RILDO">Rildo</option>
+        <option value="TERMINACION">Terminación</option>
+      </select>
+    </div>
+    <div class="frow"><label>Fecha de ingreso</label><input type="date" id="iIngreso"></div>
+    <div class="frow"><label>Observaciones (opcional)</label><textarea id="iObs" placeholder="Notas adicionales..."></textarea></div>
+    <button id="btnImport" onclick="showPanel('import')" style="display:none;width:100%;padding:10px;border:1px dashed var(--border2);border-radius:var(--radius-sm);background:transparent;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:14px">Importar datos históricos</button>
+    <button class="big-btn btn-green" onclick="saveIngreso()">Registrar ingreso</button>
+  </div>
+
+  <!-- PANEL SALIDA -->
+  <div class="panel" id="panelSalida">
+    <div class="panel-header">
+      <button class="back-btn" onclick="closePanel()">← Volver</button>
+      <h2>Asignar salida</h2>
+    </div>
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="salidaSearch" placeholder="Filtrar por patente..." oninput="doSalidaSearch()" autocomplete="off" style="text-transform:uppercase">
+    </div>
+    <div id="salidaList"></div>
+    <div id="salidaConfirm"></div>
+  </div>
+
+  <!-- PANEL PRESUPUESTOS PENDIENTES -->
+  <div class="panel" id="panelPendientes">
+    <div class="panel-header">
+      <button class="back-btn" onclick="closePanel()">← Volver</button>
+      <h2>Estado de presupuestos</h2>
+    </div>
+    <div id="pendientesList"></div>
+  </div>
+
+  <!-- PANEL IMPORT -->
+  <div class="panel" id="panelImport">
+    <div class="panel-header">
+      <button class="back-btn" onclick="closePanel()">← Volver</button>
+      <h2>Importar historial</h2>
+    </div>
+    <div class="import-box">
+      <p>Carga los registros históricos a Supabase. Solo ejecutar una vez.</p>
+      <button class="big-btn btn-blue" onclick="runImport()">Importar registros</button>
+      <div class="import-progress" id="importProgress"></div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="bnav-btn active" id="bnav-home" onclick="goHome()">
+      <svg class="bnav-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Inicio
+    </button>
+    <button class="bnav-btn" id="bnav-search" onclick="showPanel('search')">
+      <svg class="bnav-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Buscar
+    </button>
+    <button class="bnav-btn" id="bnav-pendientes" onclick="showPanel('pendientes')">
+      <svg class="bnav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Presupuestos
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+const SUPA_URL = 'https://xikjwkzrzrhgwafavopd.supabase.co';
+const SUPA_KEY = 'sb_publishable_tDwUhDHFTQUgQ78eFsL6Rw_h9_qKFXO';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const fbApp = initializeApp({
+  apiKey: "AIzaSyDS-HbrE9tjMTibbm_bD_FJTfCqsua0xqU",
+  authDomain: "taller-dbt-d9ce9.firebaseapp.com",
+  projectId: "taller-dbt-d9ce9",
+  storageBucket: "taller-dbt-d9ce9.firebasestorage.app",
+  messagingSenderId: "901679125382",
+  appId: "1:901679125382:web:39977c6b77fd49e1285207"
+});
+const db = getFirestore(fbApp);
+
+// Firebase vehiculos cache for presupuesto status
+let fbVehiculos = {};
+onSnapshot(collection(db, 'vehiculos'), snap => {
+  fbVehiculos = {};
+  snap.forEach(d => {
+    const data = d.data();
+    if(data.patente) fbVehiculos[data.patente.toUpperCase()] = data;
+  });
+  const panel = document.getElementById('panelPendientes');
+  if(panel.classList.contains('active')) renderPendientes();
+});
+
+function getPresupuestoStatus(patente) {
+  const fb = fbVehiculos[patente?.toUpperCase()];
+  if(!fb) return null;
+  const estado = fb.estado || '';
+  if(estado === 'Enviado' || estado === 'En reparación' || estado === 'Listo' || estado === 'Entregado') return 'enviado';
+  if(estado === 'Presupuesto en curso' || estado === 'Datos tomados') return 'con-datos';
+  if(estado === 'Ingresado') return 'pendiente';
+  return null;
+}
+
+function presupuestoBadge(patente) {
+  const status = getPresupuestoStatus(patente);
+  if(!status) return '';
+  const labels = {
+    'pendiente': 'Sin presupuesto',
+    'con-datos': 'Con datos',
+    'enviado': 'Presupuesto enviado'
+  };
+  return `<div class="presup-badge presup-${status}"><span class="presup-dot"></span>${labels[status]}</div>`;
+}
+
+const USERS = {
+  admin: { pass: 'admin123', role: 'admin' },
+  trabajador: { pass: 'taller123', role: 'reader' }
+};
+let currentUser = null;
+let salidaSelectedId = null;
+let realtimeSub = null;
+let isAdmin = false;
+
+function td(s){if(!s)return'—';const[y,m,d]=s.split('-');return d+'-'+m+'-'+y.slice(2);}
+function tallerBadge(t){const m={PINTURA:['b-pintura','Pintura'],RILDO:['b-rildo','Rildo'],TERMINACION:['b-terminacion','Terminación'],NA:['b-na','N/A']};const v=m[t]||['b-na',t];return`<span class="badge ${v[0]}">${v[1]}</span>`;}
+function today(){return new Date().toISOString().slice(0,10);}
+
+function showToast(msg, type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+window.doLogin = function(){
+  const u=document.getElementById('lu').value.trim().toLowerCase();
+  const p=document.getElementById('lp').value;
+  if(USERS[u]&&USERS[u].pass===p){
+    currentUser={user:u,role:USERS[u].role};
+    sessionStorage.setItem('taller_user',JSON.stringify(currentUser));
+    document.getElementById('lerr').textContent='';
+    startApp();
+  } else {
+    document.getElementById('lerr').textContent='Usuario o contraseña incorrectos.';
+  }
+}
+
+window.doLogout = function(){
+  currentUser=null;
+  sessionStorage.removeItem('taller_user');
+  if(realtimeSub) sb.removeChannel(realtimeSub);
+  document.getElementById('appScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  closePanel();
+}
+
+async function startApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appScreen').style.display='flex';
+  document.getElementById('userChip').textContent=currentUser.user;
+  isAdmin=currentUser.role==='admin';
+  document.getElementById('btnIngreso').classList.toggle('disabled',!isAdmin);
+  document.getElementById('btnSalida').classList.toggle('disabled',!isAdmin);
+  document.getElementById('iIngreso').value=today();
+  document.querySelectorAll('#btnImport').forEach(b=>b.style.display=isAdmin?'block':'none');
+  await loadStats();
+  subscribeRealtime();
+}
+
+async function loadStats(){
+  const {data}=await sb.from('vehiculos').select('taller,salida');
+  if(!data) return;
+  const active=data.filter(v=>!v.salida);
+  const cnt={PINTURA:0,RILDO:0,TERMINACION:0};
+  active.forEach(v=>{if(cnt[v.taller]!==undefined)cnt[v.taller]++;});
+  const total=cnt.PINTURA+cnt.RILDO+cnt.TERMINACION;
+  document.getElementById('statsRow').innerHTML=`
+    <div class="stat"><div class="stat-val">${cnt.PINTURA}</div><div class="stat-lbl">Pintura</div></div>
+    <div class="stat"><div class="stat-val">${cnt.RILDO}</div><div class="stat-lbl">Rildo</div></div>
+    <div class="stat"><div class="stat-val">${cnt.TERMINACION}</div><div class="stat-lbl">Terminación</div></div>
+    <div class="stat highlight"><div class="stat-val">${total}</div><div class="stat-lbl">En taller</div></div>
+  `;
+}
+
+function subscribeRealtime(){
+  realtimeSub = sb.channel('vehiculos-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'vehiculos'},()=>{
+      loadStats();
+      const panel=document.querySelector('.panel.active');
+      if(panel&&panel.id==='panelSalida') renderSalidaList(document.getElementById('salidaSearch').value.trim());
+    })
+    .subscribe();
+}
+
+window.showPanel = function(name){
+  document.getElementById('homeView').style.display='none';
+  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport'].forEach(id=>{
+    document.getElementById(id).classList.remove('active');
+  });
+  document.getElementById('panel'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
+  if(name==='search'){
+    document.getElementById('bnav-search').classList.add('active');
+    document.getElementById('searchInput').value='';
+    document.getElementById('searchResults').innerHTML='';
+    setTimeout(()=>document.getElementById('searchInput').focus(),100);
+  }
+  if(name==='ingreso'){document.getElementById('iPatente').value='';document.getElementById('iObs').value='';}
+  if(name==='salida'){document.getElementById('salidaSearch').value='';document.getElementById('salidaConfirm').innerHTML='';salidaSelectedId=null;renderSalidaList('');}
+  if(name==='pendientes'){document.getElementById('bnav-pendientes').classList.add('active');renderPendientes();}
+}
+
+window.goHome = function(){
+  document.getElementById('homeView').style.display='block';
+  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('bnav-home').classList.add('active');
+  loadStats();
+}
+
+window.closePanel = goHome;
+
+window.doSearch = async function(){
+  const q=document.getElementById('searchInput').value.trim().toUpperCase();
+  const cont=document.getElementById('searchResults');
+  if(q.length<2){cont.innerHTML='';return;}
+  cont.innerHTML='<div class="loading">Buscando...</div>';
+  const {data}=await sb.from('vehiculos').select('*').ilike('patente','%'+q+'%').order('id',{ascending:false}).limit(10);
+  if(!data||!data.length){cont.innerHTML='<div class="empty">Sin resultados para "'+q+'"</div>';return;}
+  cont.innerHTML=data.map(v=>`
+    <div class="result-card">
+      <div class="rc-top">
+        <span class="rc-pat">${v.patente}</span>
+        ${v.salida?'<span class="badge b-salida">Retirado</span>':'<span class="badge b-activo">En taller</span>'}
+      </div>
+      <div class="rc-rows">
+        <div class="rc-row"><span>Taller</span>${tallerBadge(v.taller)}</div>
+        <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
+        <div class="rc-row"><span>Salida</span><span>${td(v.salida)}</span></div>
+      </div>
+      ${presupuestoBadge(v.patente)}
+      ${v.obs?`<div class="rc-obs">${v.obs}</div>`:''}
+      ${!v.salida && isAdmin ? `
+        <div class="rc-actions">
+          <button class="rc-act-btn blue" onclick="toggleCambioTaller(${v.id})">Cambiar taller</button>
+        </div>
+        <div id="cambio-${v.id}" style="display:none">
+          <div class="cambio-box">
+            <p>Nuevo taller para ${v.patente}:</p>
+            <div class="frow">
+              <select id="nuevoTaller-${v.id}">
+                <option value="PINTURA"${v.taller==='PINTURA'?' selected':''}>Pintura</option>
+                <option value="RILDO"${v.taller==='RILDO'?' selected':''}>Rildo</option>
+                <option value="TERMINACION"${v.taller==='TERMINACION'?' selected':''}>Terminación</option>
+              </select>
+            </div>
+            <button class="big-btn btn-blue" onclick="cambiarTaller(${v.id},'${v.patente}')">Confirmar cambio</button>
+          </div>
+        </div>` : ''}
+    </div>
+  `).join('');
+}
+
+window.toggleCambioTaller = function(id){
+  const box=document.getElementById('cambio-'+id);
+  if(!box) return;
+  box.style.display=box.style.display==='none'?'block':'none';
+}
+
+window.cambiarTaller = async function(id, pat){
+  const sel=document.getElementById('nuevoTaller-'+id);
+  if(!sel) return;
+  const {error}=await sb.from('vehiculos').update({taller:sel.value}).eq('id',id);
+  if(error){showToast('Error al cambiar taller','err');return;}
+  showToast(pat+' movido a '+sel.value,'ok');
+  document.getElementById('searchInput').dispatchEvent(new Event('input'));
+  loadStats();
+}
+
+window.saveIngreso = async function(){
+  const pat=document.getElementById('iPatente').value.trim().toUpperCase();
+  const tal=document.getElementById('iTaller').value;
+  const ing=document.getElementById('iIngreso').value;
+  const obs=document.getElementById('iObs').value.trim();
+  if(!pat||!ing){showToast('Patente y fecha son obligatorias','err');return;}
+  const {data:exists}=await sb.from('vehiculos').select('id').eq('patente',pat).is('salida',null).maybeSingle();
+  if(exists){showToast(pat+' ya está activo en taller','err');return;}
+  const {error}=await sb.from('vehiculos').insert({patente:pat,taller:tal,ingreso:ing,obs:obs||null});
+  if(error){showToast('Error al guardar','err');return;}
+  showToast(pat+' registrado en '+tal,'ok');
+  document.getElementById('iPatente').value='';
+  document.getElementById('iObs').value='';
+  loadStats();
+}
+
+async function renderSalidaList(q){
+  const cont=document.getElementById('salidaList');
+  cont.innerHTML='<div class="loading">Cargando...</div>';
+  let query=sb.from('vehiculos').select('*').is('salida',null).order('ingreso',{ascending:true});
+  if(q) query=query.ilike('patente','%'+q.toUpperCase()+'%');
+  const {data}=await query;
+  if(!data||!data.length){cont.innerHTML='<div class="empty">No hay vehículos activos'+(q?' con ese filtro':'')+'.</div>';return;}
+  cont.innerHTML=data.map(v=>`
+    <div class="sal-item${salidaSelectedId===v.id?' selected':''}" onclick="selectSalida(${v.id},'${v.patente}','${v.taller}')">
+      <div class="sal-left">
+        <div class="sal-pat">${v.patente}</div>
+        <div class="sal-sub">Ingresó: ${td(v.ingreso)}</div>
+      </div>
+      ${tallerBadge(v.taller)}
+    </div>
+  `).join('');
+}
+
+window.doSalidaSearch = function(){
+  salidaSelectedId=null;
+  document.getElementById('salidaConfirm').innerHTML='';
+  renderSalidaList(document.getElementById('salidaSearch').value.trim());
+}
+
+window.selectSalida = function(id,pat,taller){
+  salidaSelectedId=id;
+  renderSalidaList(document.getElementById('salidaSearch').value.trim());
+  document.getElementById('salidaConfirm').innerHTML=`
+    <div class="confirm-box">
+      <p>Confirmar salida de <strong>${pat}</strong> (${taller==='TERMINACION'?'Terminación':taller.charAt(0)+taller.slice(1).toLowerCase()})</p>
+      <div class="frow"><label>Fecha de salida</label><input type="date" id="salidaFecha" value="${today()}"/></div>
+      <button class="big-btn btn-red" onclick="confirmSalida(${id},'${pat}')">Confirmar salida</button>
+    </div>
+  `;
+  document.getElementById('salidaConfirm').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+window.confirmSalida = async function(id, pat){
+  const fecha=document.getElementById('salidaFecha').value;
+  if(!fecha){showToast('Selecciona una fecha','err');return;}
+  const{error}=await sb.from('vehiculos').update({salida:fecha,taller:'NA'}).eq('id',id);
+  if(error){showToast('Error al guardar','err');return;}
+  showToast('Salida de '+pat+' registrada','ok');
+  salidaSelectedId=null;
+  document.getElementById('salidaConfirm').innerHTML='';
+  renderSalidaList(document.getElementById('salidaSearch').value.trim());
+  loadStats();
+}
+
+function renderPendientes(){
+  const cont=document.getElementById('pendientesList');
+  const vehList = Object.values(fbVehiculos)
+    .filter(v => v.estado && v.estado !== 'Entregado')
+    .sort((a,b) => (b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
+
+  if(!vehList.length){
+    cont.innerHTML='<div class="empty">No hay presupuestos activos en este momento.</div>';
+    return;
+  }
+
+  const statusMap = {
+    'Ingresado': {cls:'presup-pendiente', label:'Sin presupuesto'},
+    'Datos tomados': {cls:'presup-con-datos', label:'Con datos'},
+    'Presupuesto en curso': {cls:'presup-con-datos', label:'Presupuesto en curso'},
+    'Enviado': {cls:'presup-enviado', label:'Presupuesto enviado'},
+    'En reparación': {cls:'presup-enviado', label:'En reparación'},
+    'Listo': {cls:'presup-enviado', label:'Listo para entrega'},
+  };
+
+  cont.innerHTML = vehList.map(v => {
+    const sm = statusMap[v.estado] || {cls:'presup-pendiente', label:v.estado};
+    return `
+      <div class="result-card">
+        <div class="rc-top">
+          <span class="rc-pat">${(v.patente||'—').toUpperCase()}</span>
+          <span class="badge ${v.taller==='PINTURA'?'b-pintura':v.taller==='RILDO'?'b-rildo':v.taller==='TERMINACION'?'b-terminacion':'b-na'}">${v.taller||'—'}</span>
+        </div>
+        <div class="rc-rows">
+          <div class="rc-row"><span>Vehículo</span><span>${[v.marca,v.modelo,v.anio].filter(Boolean).join(' ')||'—'}</span></div>
+          <div class="rc-row"><span>KM</span><span>${v.km?Number(v.km).toLocaleString('es-CL')+' km':'—'}</span></div>
+        </div>
+        <div class="presup-badge ${sm.cls}"><span class="presup-dot"></span>${sm.label}</div>
+      </div>`;
+  }).join('');
+}
+
+window.runImport = async function(){
+  const prog=document.getElementById('importProgress');
+  const IMPORT_DATA=[{"patente":"VBDG-89","taller":"RILDO","ingreso":"2026-02-17","salida":null,"obs":null},{"patente":"TCBW-73","taller":"PINTURA","ingreso":"2025-12-15","salida":null,"obs":null},{"patente":"SRXP-71","taller":"NA","ingreso":"2026-03-11","salida":"2026-03-30","obs":null},{"patente":"TYSP-11","taller":"NA","ingreso":"2026-03-04","salida":"2026-04-01","obs":null},{"patente":"VFZW-99","taller":"RILDO","ingreso":"2026-03-03","salida":null,"obs":null},{"patente":"VBDG-63","taller":"RILDO","ingreso":"2026-03-12","salida":null,"obs":null},{"patente":"VRDY-99","taller":"NA","ingreso":"2026-03-09","salida":"2026-03-27","obs":null},{"patente":"SPGR-97","taller":"PINTURA","ingreso":"2026-03-04","salida":null,"obs":null},{"patente":"VTDL-25","taller":"NA","ingreso":"2026-03-12","salida":"2026-03-25","obs":null},{"patente":"SPGJ-65","taller":"NA","ingreso":"2026-03-09","salida":"2026-03-23","obs":null},{"patente":"TJWZ-49","taller":"TERMINACION","ingreso":"2025-12-18","salida":null,"obs":null},{"patente":"VBDG-29","taller":"TERMINACION","ingreso":"2026-03-13","salida":null,"obs":null},{"patente":"SKKP-51","taller":"NA","ingreso":"2026-03-11","salida":"2026-03-18","obs":null},{"patente":"VGJF-17","taller":"NA","ingreso":"2026-03-12","salida":"2026-03-16","obs":null},{"patente":"VBDG-60","taller":"NA","ingreso":"2026-02-19","salida":"2026-03-19","obs":null},{"patente":"SWPD-23","taller":"TERMINACION","ingreso":"2026-02-18","salida":null,"obs":null}];
+  let ok=0,err=0;
+  for(const v of IMPORT_DATA){
+    const{error}=await sb.from('vehiculos').upsert({...v},{onConflict:'patente'});
+    if(error) err++; else ok++;
+    prog.textContent=`Procesando... ${ok+err}/${IMPORT_DATA.length}`;
+  }
+  prog.textContent=`Completado: ${ok} importados, ${err} errores.`;
+  loadStats();
+}
+
+// Auto login from session
+const saved = sessionStorage.getItem('taller_user');
+if(saved){ currentUser=JSON.parse(saved); startApp(); }
+
+document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+</script>
+</body>
+</html>
