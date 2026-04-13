@@ -491,8 +491,7 @@ window.doLogin = async function(){
   const u=document.getElementById('lu').value.trim().toLowerCase();
   const p=document.getElementById('lp').value;
   if(!u||!p){document.getElementById('lerr').textContent='Completa usuario y contraseña.';return;}
-  document.getElementById('btnLogin').textContent='Ingresando...';
-  document.getElementById('btnLogin').disabled=true;
+
   try {
     const {data,error}=await sb.from('usuarios').select('*').eq('username',u).maybeSingle();
     if(error||!data){throw new Error('Usuario no encontrado');}
@@ -510,10 +509,9 @@ window.doLogin = async function(){
     document.getElementById('lerr').textContent='';
     startApp();
   } catch(e){
-    document.getElementById('lerr').textContent=e.message||'Error al ingresar.';
+    const lerr=document.getElementById('lerr'); if(lerr) lerr.textContent=e.message||'Error al ingresar.';
   }
-  document.getElementById('btnLogin').textContent='Ingresar';
-  document.getElementById('btnLogin').disabled=false;
+
 }
 
 window.saveNewPassword = async function(){
