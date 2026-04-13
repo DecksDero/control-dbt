@@ -162,6 +162,21 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
 
 .loading{font-size:13px;color:var(--text3);padding:16px 0;text-align:center}
 .empty{font-size:13px;color:var(--text3);padding:24px 0;text-align:center}
+.reporte-header{text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--text)}
+.reporte-title{font-weight:700;font-size:16px;letter-spacing:-.3px}
+.reporte-sub{font-size:11px;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:.06em}
+.reporte-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden}
+.col-header{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:8px 10px;background:var(--text);color:#fff;text-align:center}
+.col-body{padding:6px 8px;border-right:1px solid var(--border);min-height:60px}
+.col-body:last-child{border-right:none}
+.pat-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--border)}
+.pat-row:last-child{border-bottom:none}
+.pat{font-family:'DM Mono',monospace;font-weight:500;font-size:13px}
+.pat-date{font-size:10px;color:var(--text3)}
+.col-total{font-size:11px;color:var(--text2);padding:5px 8px;border-top:1px solid var(--border);border-right:1px solid var(--border);text-align:right;font-style:italic;background:var(--surface2)}
+.col-total:last-child{border-right:none}
+.reporte-footer{margin-top:12px;display:flex;justify-content:space-between;font-size:11px;color:var(--text3)}
+.empty-col{font-size:11px;color:var(--text3);padding:8px 0;font-style:italic}
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--text);color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all .25s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.err{background:var(--red)}
@@ -229,6 +244,12 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
           <svg viewBox="0 0 24 24" stroke="#5521B5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         </div>
         <div class="act-label">Presupuestos</div>
+      </div>
+      <div class="act-btn" onclick="showPanel('reporte')">
+        <div class="act-icon" style="background:#FEF3C7">
+          <svg viewBox="0 0 24 24" stroke="#92400E"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        </div>
+        <div class="act-label">Reporte semanal</div>
       </div>
     </div>
     <button id="btnImport" onclick="showPanel('import')" style="display:none;width:100%;padding:10px;border:1px dashed var(--border2);border-radius:var(--radius-sm);background:transparent;font-size:13px;color:var(--text2);cursor:pointer;margin-top:8px">Importar datos históricos</button>
@@ -303,6 +324,28 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
     </div>
   </div>
 
+  <!-- PANEL TALLER -->
+  <div class="panel" id="panelTaller">
+    <div class="panel-header">
+      <button class="back-btn" onclick="closePanel()">← Volver</button>
+      <h2 id="tallerPanelTitle">Vehículos</h2>
+    </div>
+    <div id="tallerList"></div>
+  </div>
+
+  <!-- PANEL REPORTE -->
+  <div class="panel" id="panelReporte">
+    <div class="panel-header">
+      <button class="back-btn" onclick="closePanel()">← Volver</button>
+      <h2>Reporte semanal</h2>
+    </div>
+    <div style="margin-bottom:14px">
+      <p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:14px">Genera el registro imprimible del estado actual del taller — 3 columnas con las patentes por sección.</p>
+      <button class="big-btn btn-dark" onclick="imprimirReporte()" style="margin-bottom:10px">Imprimir / Guardar PDF</button>
+    </div>
+    <div id="reportePreview"></div>
+  </div>
+
   <div class="bottom-nav">
     <button class="bnav-btn active" id="bnav-home" onclick="goHome()">
       <svg class="bnav-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -373,8 +416,9 @@ function presupuestoBadge(patente) {
 }
 
 const USERS = {
-  admin: { pass: 'admin123', role: 'admin' },
-  trabajador: { pass: 'taller123', role: 'reader' }
+  admin:     { pass: 'admin123',    role: 'admin' },
+  supervisor:{ pass: 'super456',    role: 'admin' },
+  consulta:  { pass: 'consulta789', role: 'consulta' }
 };
 let currentUser = null;
 let salidaSelectedId = null;
@@ -418,10 +462,17 @@ async function startApp(){
   document.getElementById('appScreen').style.display='flex';
   document.getElementById('userChip').textContent=currentUser.user;
   isAdmin=currentUser.role==='admin';
+  const isConsulta = currentUser.role==='consulta';
+  const canChangeTaller = isAdmin || isConsulta;
+  window.canChangeTaller = canChangeTaller;
   document.getElementById('btnIngreso').classList.toggle('disabled',!isAdmin);
   document.getElementById('btnSalida').classList.toggle('disabled',!isAdmin);
+  document.getElementById('btnIngreso').style.opacity = isAdmin ? '1' : '0.35';
+  document.getElementById('btnSalida').style.opacity = isAdmin ? '1' : '0.35';
   document.getElementById('iIngreso').value=today();
   document.querySelectorAll('#btnImport').forEach(b=>b.style.display=isAdmin?'block':'none');
+  const userLabel = isAdmin ? 'Admin' : isConsulta ? 'Consulta' : currentUser.user;
+  document.getElementById('userChip').textContent = currentUser.user + ' · ' + (isAdmin?'admin':isConsulta?'consulta':'lector');
   await loadStats();
   subscribeRealtime();
 }
@@ -434,10 +485,10 @@ async function loadStats(){
   active.forEach(v=>{if(cnt[v.taller]!==undefined)cnt[v.taller]++;});
   const total=cnt.PINTURA+cnt.RILDO+cnt.TERMINACION;
   document.getElementById('statsRow').innerHTML=`
-    <div class="stat"><div class="stat-val">${cnt.PINTURA}</div><div class="stat-lbl">Pintura</div></div>
-    <div class="stat"><div class="stat-val">${cnt.RILDO}</div><div class="stat-lbl">Rildo</div></div>
-    <div class="stat"><div class="stat-val">${cnt.TERMINACION}</div><div class="stat-lbl">Terminación</div></div>
-    <div class="stat highlight"><div class="stat-val">${total}</div><div class="stat-lbl">En taller</div></div>
+    <div class="stat" style="cursor:pointer" onclick="showTaller('PINTURA')"><div class="stat-val">${cnt.PINTURA}</div><div class="stat-lbl">Pintura</div></div>
+    <div class="stat" style="cursor:pointer" onclick="showTaller('RILDO')"><div class="stat-val">${cnt.RILDO}</div><div class="stat-lbl">Rildo</div></div>
+    <div class="stat" style="cursor:pointer" onclick="showTaller('TERMINACION')"><div class="stat-val">${cnt.TERMINACION}</div><div class="stat-lbl">Terminación</div></div>
+    <div class="stat highlight" style="cursor:pointer" onclick="showTaller('TODOS')"><div class="stat-val">${total}</div><div class="stat-lbl">En taller</div></div>
   `;
 }
 
@@ -453,7 +504,7 @@ function subscribeRealtime(){
 
 window.showPanel = function(name){
   document.getElementById('homeView').style.display='none';
-  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport'].forEach(id=>{
+  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte'].forEach(id=>{
     document.getElementById(id).classList.remove('active');
   });
   document.getElementById('panel'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
@@ -467,11 +518,12 @@ window.showPanel = function(name){
   if(name==='ingreso'){document.getElementById('iPatente').value='';document.getElementById('iObs').value='';}
   if(name==='salida'){document.getElementById('salidaSearch').value='';document.getElementById('salidaConfirm').innerHTML='';salidaSelectedId=null;renderSalidaList('');}
   if(name==='pendientes'){document.getElementById('bnav-pendientes').classList.add('active');renderPendientes();}
+  if(name==='reporte'){renderReportePreview();}
 }
 
 window.goHome = function(){
   document.getElementById('homeView').style.display='block';
-  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte'].forEach(id=>document.getElementById(id).classList.remove('active'));
   document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('bnav-home').classList.add('active');
   loadStats();
@@ -499,7 +551,7 @@ window.doSearch = async function(){
       </div>
       ${presupuestoBadge(v.patente)}
       ${v.obs?`<div class="rc-obs">${v.obs}</div>`:''}
-      ${!v.salida && isAdmin ? `
+      ${!v.salida && window.canChangeTaller ? `
         <div class="rc-actions">
           <button class="rc-act-btn blue" onclick="toggleCambioTaller(${v.id})">Cambiar taller</button>
         </div>
@@ -636,6 +688,109 @@ function renderPendientes(){
         <div class="presup-badge ${sm.cls}"><span class="presup-dot"></span>${sm.label}</div>
       </div>`;
   }).join('');
+}
+
+window.showTaller = async function(taller){
+  document.getElementById('homeView').style.display='none';
+  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById('panelTaller').classList.add('active');
+  const titles = {PINTURA:'Pintura',RILDO:'Rildo',TERMINACION:'Terminación',TODOS:'Todos en taller'};
+  document.getElementById('tallerPanelTitle').textContent = titles[taller]||taller;
+  const cont = document.getElementById('tallerList');
+  cont.innerHTML='<div class="loading">Cargando...</div>';
+  let query = sb.from('vehiculos').select('*').is('salida',null).order('ingreso',{ascending:true});
+  if(taller!=='TODOS') query = query.eq('taller',taller);
+  const {data} = await query;
+  if(!data||!data.length){cont.innerHTML='<div class="empty">Sin vehículos en este taller.</div>';return;}
+  cont.innerHTML = data.map(v=>`
+    <div class="result-card">
+      <div class="rc-top">
+        <span class="rc-pat">${v.patente}</span>
+        ${tallerBadge(v.taller)}
+      </div>
+      <div class="rc-rows">
+        <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
+        ${v.obs?`<div class="rc-row"><span>Estado presup.</span><span>${v.obs}</span></div>`:''}
+      </div>
+      ${v.obs?`<div class="rc-obs">${v.obs}</div>`:''}
+    </div>
+  `).join('');
+}
+
+async function renderReportePreview(){
+  const prev = document.getElementById('reportePreview');
+  prev.innerHTML='<div class="loading">Generando reporte...</div>';
+  const {data} = await sb.from('vehiculos').select('*').is('salida',null).order('taller').order('ingreso',{ascending:true});
+  if(!data||!data.length){prev.innerHTML='<div class="empty">Sin vehículos activos.</div>';return;}
+  const grupos = {PINTURA:[],RILDO:[],TERMINACION:[]};
+  data.forEach(v=>{ if(grupos[v.taller]) grupos[v.taller].push(v); });
+  const hoy = new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const semana = `Viernes ${new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'})}`;
+  prev.innerHTML = `
+    <div id="reporte-contenido" style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;font-family:'DM Sans',sans-serif">
+      <div class="reporte-header">
+        <div class="reporte-title">Servicio y Asesoría Técnica DBT</div>
+        <div class="reporte-sub">Registro semanal · ${semana}</div>
+      </div>
+      <div class="reporte-grid">
+        <div class="col-header">Pintura (${grupos.PINTURA.length})</div>
+        <div class="col-header">Rildo (${grupos.RILDO.length})</div>
+        <div class="col-header">Terminación (${grupos.TERMINACION.length})</div>
+        ${['PINTURA','RILDO','TERMINACION'].map(t=>`
+          <div class="col-body">
+            ${grupos[t].length ? grupos[t].map(v=>`
+              <div class="pat-row">
+                <span class="pat">${v.patente}</span>
+                <span class="pat-date">${td(v.ingreso)}</span>
+              </div>
+            `).join('') : '<div class="empty-col">Sin vehículos</div>'}
+          </div>
+        `).join('')}
+        <div class="col-total">Total: ${grupos.PINTURA.length}</div>
+        <div class="col-total">Total: ${grupos.RILDO.length}</div>
+        <div class="col-total">Total: ${grupos.TERMINACION.length}</div>
+      </div>
+      <div class="reporte-footer">
+        <span>Total general: ${data.length} vehículos en taller</span>
+        <span>${hoy} · Taller DBT</span>
+      </div>
+    </div>
+  `;
+}
+
+window.imprimirReporte = async function(){
+  await renderReportePreview();
+  setTimeout(()=>{
+    const contenido = document.getElementById('reporte-contenido');
+    if(!contenido) return;
+    const win = window.open('','_blank');
+    win.document.write(`<!DOCTYPE html><html><head>
+      <meta charset="UTF-8">
+      <title>Reporte Semanal - Taller DBT</title>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+      <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'DM Sans',sans-serif;padding:24px 30px;color:#1A1917;background:#fff;font-size:13px}
+        @media print{body{padding:0} @page{size:A4 portrait;margin:15mm 12mm}}
+        .reporte-header{text-align:center;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #1A1917}
+        .reporte-title{font-weight:700;font-size:17px;letter-spacing:-.3px}
+        .reporte-sub{font-size:11px;color:#888;margin-top:4px;text-transform:uppercase;letter-spacing:.06em}
+        .reporte-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid #1A1917}
+        .col-header{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:8px 10px;background:#1A1917;color:#fff;text-align:center}
+        .col-body{padding:6px 10px;border-right:1px solid #ddd}
+        .col-body:last-child{border-right:none}
+        .pat-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid #f0f0f0}
+        .pat-row:last-child{border-bottom:none}
+        .pat{font-family:'DM Mono',monospace;font-weight:500;font-size:13px}
+        .pat-date{font-size:10px;color:#999}
+        .col-total{font-size:11px;color:#666;padding:6px 10px;border-top:1px solid #ddd;text-align:right;font-style:italic}
+        .reporte-footer{margin-top:14px;display:flex;justify-content:space-between;font-size:10px;color:#aaa}
+        .empty-col{font-size:11px;color:#ccc;padding:10px;font-style:italic}
+      </style>
+    </head><body>${contenido.outerHTML}</body></html>`);
+    win.document.close();
+    win.onload = ()=>{ win.print(); };
+  }, 500);
 }
 
 window.runImport = async function(){
