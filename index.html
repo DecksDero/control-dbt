@@ -198,6 +198,65 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.err{background:var(--red)}
 .toast.ok{background:var(--green)}
+
+/* ESTADÍSTICAS */
+.stats-ext-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-ext{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.stat-ext-val{font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);line-height:1}
+.stat-ext-lbl{font-size:12px;color:var(--text2);margin-top:4px;font-weight:500}
+.stat-ext.accent{background:var(--text);border-color:var(--text)}
+.stat-ext.accent .stat-ext-val,.stat-ext.accent .stat-ext-lbl{color:#fff}
+.stat-ext.accent .stat-ext-lbl{color:rgba(255,255,255,.65)}
+.hist-bar-wrap{background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px}
+.hist-bar-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+.hist-bar{height:6px;border-radius:3px;background:var(--blue);transition:width .4s}
+
+/* RESPONSIVE DESKTOP ≥ 1024px */
+@media (min-width:1024px){
+  html,body{overflow:hidden}
+  .app-screen{
+    max-width:100%;
+    display:grid;
+    grid-template-columns:220px 1fr;
+    grid-template-rows:auto 1fr;
+    grid-template-areas:"sidebar topbar" "sidebar content";
+    height:100vh;
+    overflow:hidden;
+  }
+  .topbar{grid-area:topbar;position:relative;top:0}
+  .home-view{grid-area:content;padding:28px 36px 40px;overflow-y:auto;min-height:0}
+  .panel{grid-area:content;padding:28px 36px 40px;overflow-y:auto;min-height:0}
+  .bottom-nav{
+    grid-area:sidebar;
+    flex-direction:column;
+    border-top:none;
+    border-right:1px solid var(--border);
+    height:100vh;
+    padding:20px 12px;
+    align-items:flex-start;
+    justify-content:flex-start;
+    gap:2px;
+    overflow-y:auto;
+  }
+  .bnav-btn{
+    flex-direction:row;
+    justify-content:flex-start;
+    gap:10px;
+    padding:10px 14px;
+    border-radius:var(--radius-sm);
+    font-size:13px;
+    width:100%;
+    text-align:left;
+  }
+  .bnav-btn.active{background:var(--blue-bg);color:var(--blue-text)}
+  .bnav-icon{flex-shrink:0}
+  .stats-row{grid-template-columns:repeat(4,1fr)}
+  .actions-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+  .stats-ext-grid{grid-template-columns:repeat(4,1fr)}
+  .toast{bottom:40px}
+  .result-card{max-width:720px}
+  .sidebar-brand{display:flex !important}
+}
 </style>
 </head>
 <body>
@@ -378,6 +437,15 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
     <div id="reportePreview"></div>
   </div>
 
+  <!-- PANEL ESTADÍSTICAS -->
+  <div class="panel" id="panelEstadisticas">
+    <div class="panel-header">
+      <button class="back-btn" onclick="closePanel()">← Volver</button>
+      <h2>Estadísticas</h2>
+    </div>
+    <div id="statsExtContent"><div class="loading">Cargando estadísticas...</div></div>
+  </div>
+
   <!-- PANEL ADMIN USUARIOS -->
   <div class="panel" id="panelAdmin">
     <div class="panel-header">
@@ -401,6 +469,13 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
   </div>
 
   <div class="bottom-nav">
+    <div class="sidebar-brand" style="display:none;align-items:center;gap:10px;padding:4px 4px 16px;border-bottom:1px solid var(--border);margin-bottom:8px;width:100%">
+      <div class="topbar-logo"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+      <div>
+        <div style="font-size:14px;font-weight:600;line-height:1.2">Control Taller</div>
+        <div style="font-size:11px;color:var(--text3)" id="sidebarUser">—</div>
+      </div>
+    </div>
     <button class="bnav-btn active" id="bnav-home" onclick="goHome()">
       <svg class="bnav-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Inicio
@@ -412,6 +487,10 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
     <button class="bnav-btn" id="bnav-pendientes" onclick="showPanel('pendientes')">
       <svg class="bnav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       Presupuestos
+    </button>
+    <button class="bnav-btn" id="bnav-estadisticas" onclick="showPanel('estadisticas')" style="display:none">
+      <svg class="bnav-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Estadísticas
     </button>
     <button class="bnav-btn" id="bnav-admin" onclick="showAdminPanel()" style="display:none">
       <svg class="bnav-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -481,6 +560,8 @@ let isAdmin = false;
 function td(s){if(!s)return'—';const[y,m,d]=s.split('-');return d+'-'+m+'-'+y.slice(2);}
 function tallerBadge(t){const m={PINTURA:['b-pintura','Pintura'],RILDO:['b-rildo','Rildo'],TERMINACION:['b-terminacion','Terminación'],NA:['b-na','N/A']};const v=m[t]||['b-na',t];return`<span class="badge ${v[0]}">${v[1]}</span>`;}
 function today(){return new Date().toISOString().slice(0,10);}
+function obsLabel(obs){if(!obs)return null;if(obs.includes('||'))return obs.split('||')[0].trim();return obs;}
+function diasEnTaller(ingreso,salida){if(!ingreso)return null;const end=salida?new Date(salida):new Date();const start=new Date(ingreso);return Math.max(0,Math.floor((end-start)/(1000*60*60*24)));}
 
 function showToast(msg, type='ok'){
   const t=document.getElementById('toast');
@@ -545,6 +626,8 @@ async function startApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appScreen').style.display='flex';
   document.getElementById('userChip').textContent=currentUser.display||currentUser.user;
+  const sbUser = document.getElementById('sidebarUser');
+  if(sbUser) sbUser.textContent = currentUser.display||currentUser.user;
   isAdmin=currentUser.role==='admin';
   const isSupervisor = currentUser.role==='supervisor';
   const isConsulta = currentUser.role==='consulta';
@@ -562,6 +645,10 @@ async function startApp(){
   // Admin-only: users panel tab
   const adminNav = document.getElementById('bnav-admin');
   if(adminNav) adminNav.style.display = isAdmin ? 'flex' : 'none';
+
+  // Supervisor+: statistics panel
+  const statsNav = document.getElementById('bnav-estadisticas');
+  if(statsNav) statsNav.style.display = (isAdmin || isSupervisor) ? 'flex' : 'none';
 
   // Reporte visible for all roles
   // Pendientes visible for all roles
@@ -605,7 +692,7 @@ window.showPanel = function(name){
     showToast('Solo el administrador puede gestionar usuarios','err');return;
   }
   document.getElementById('homeView').style.display='none';
-  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelAdmin'].forEach(id=>{
+  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin'].forEach(id=>{
     document.getElementById(id).classList.remove('active');
   });
   document.getElementById('panel'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
@@ -620,11 +707,12 @@ window.showPanel = function(name){
   if(name==='salida'){document.getElementById('salidaSearch').value='';document.getElementById('salidaConfirm').innerHTML='';salidaSelectedId=null;renderSalidaList('');}
   if(name==='pendientes'){document.getElementById('bnav-pendientes').classList.add('active');renderPendientes();}
   if(name==='reporte'){renderReportePreview();}
+  if(name==='estadisticas'){document.getElementById('bnav-estadisticas').classList.add('active');renderEstadisticas();}
 }
 
 window.goHome = function(){
   document.getElementById('homeView').style.display='block';
-  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelAdmin'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin'].forEach(id=>document.getElementById(id).classList.remove('active'));
   document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('bnav-home').classList.add('active');
   loadStats();
@@ -648,10 +736,11 @@ window.doSearch = async function(){
       <div class="rc-rows">
         <div class="rc-row"><span>Taller</span>${tallerBadge(v.taller)}</div>
         <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
-        <div class="rc-row"><span>Salida</span><span>${td(v.salida)}</span></div>
+        ${v.salida?`<div class="rc-row"><span>Salida</span><span>${td(v.salida)}</span></div>`:''}
+        <div class="rc-row"><span>Días en taller</span><span style="font-weight:600;color:${v.salida?'var(--text2)':'var(--blue)'}">${diasEnTaller(v.ingreso,v.salida)} días</span></div>
+        ${obsLabel(v.obs)?`<div class="rc-row"><span>Estado</span><span>${obsLabel(v.obs)}</span></div>`:''}
       </div>
       ${presupuestoBadge(v.patente)}
-      ${v.obs?`<div class="rc-obs">${v.obs}</div>`:''}
       ${!v.salida && window.canChangeTaller ? `
         <div class="rc-actions">
           <button class="rc-act-btn blue" onclick="toggleCambioTaller(${v.id})">Cambiar taller</button>
@@ -793,7 +882,7 @@ function renderPendientes(){
 
 window.showTaller = async function(taller){
   document.getElementById('homeView').style.display='none';
-  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelAdmin'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin'].forEach(id=>document.getElementById(id).classList.remove('active'));
   document.getElementById('panelTaller').classList.add('active');
   const titles = {PINTURA:'Pintura',RILDO:'Rildo',TERMINACION:'Terminación',TODOS:'Todos en taller'};
   document.getElementById('tallerPanelTitle').textContent = titles[taller]||taller;
@@ -811,11 +900,115 @@ window.showTaller = async function(taller){
       </div>
       <div class="rc-rows">
         <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
-        ${v.obs?`<div class="rc-row"><span>Estado presup.</span><span>${v.obs}</span></div>`:''}
+        <div class="rc-row"><span>Días en taller</span><span style="font-weight:600;color:var(--blue)">${diasEnTaller(v.ingreso,null)} días</span></div>
+        ${obsLabel(v.obs)?`<div class="rc-row"><span>Estado presup.</span><span>${obsLabel(v.obs)}</span></div>`:''}
       </div>
-      ${v.obs?`<div class="rc-obs">${v.obs}</div>`:''}
     </div>
   `).join('');
+}
+
+async function renderEstadisticas(){
+  const cont = document.getElementById('statsExtContent');
+  cont.innerHTML = '<div class="loading">Cargando estadísticas...</div>';
+  try {
+    const {data} = await sb.from('vehiculos').select('taller,ingreso,salida');
+    if(!data){ cont.innerHTML='<div class="empty">Sin datos.</div>'; return; }
+
+    const entregados = data.filter(v=>v.salida);
+    const enTaller = data.filter(v=>!v.salida);
+
+    // Promedio de días en taller (entregados)
+    let promDias = 0;
+    if(entregados.length){
+      const totalDias = entregados.reduce((acc,v)=>acc+diasEnTaller(v.ingreso,v.salida),0);
+      promDias = Math.round(totalDias / entregados.length);
+    }
+
+    // Máximo días actualmente en taller
+    const maxDias = enTaller.length
+      ? Math.max(...enTaller.map(v=>diasEnTaller(v.ingreso,null)))
+      : 0;
+
+    // Conteo por taller (activos)
+    const cnt = {PINTURA:0,RILDO:0,TERMINACION:0};
+    enTaller.forEach(v=>{ if(cnt[v.taller]!==undefined) cnt[v.taller]++; });
+    const totalActivos = enTaller.length;
+    const maxCnt = Math.max(...Object.values(cnt), 1);
+
+    // Entregados por mes (últimos 6 meses)
+    const now = new Date();
+    const meses = [];
+    for(let i=5;i>=0;i--){
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      meses.push({
+        label: d.toLocaleDateString('es-CL',{month:'short',year:'2-digit'}),
+        key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
+        count: 0
+      });
+    }
+    entregados.forEach(v=>{
+      if(!v.salida) return;
+      const key = v.salida.slice(0,7);
+      const m = meses.find(m=>m.key===key);
+      if(m) m.count++;
+    });
+    const maxMes = Math.max(...meses.map(m=>m.count), 1);
+
+    cont.innerHTML = `
+      <div class="stats-ext-grid">
+        <div class="stat-ext accent" style="grid-column:span 2">
+          <div class="stat-ext-val">${entregados.length}</div>
+          <div class="stat-ext-lbl">Vehículos entregados (historial total)</div>
+        </div>
+        <div class="stat-ext">
+          <div class="stat-ext-val">${totalActivos}</div>
+          <div class="stat-ext-lbl">En taller ahora</div>
+        </div>
+        <div class="stat-ext">
+          <div class="stat-ext-val">${promDias}</div>
+          <div class="stat-ext-lbl">Días promedio en taller</div>
+        </div>
+        <div class="stat-ext">
+          <div class="stat-ext-val">${maxDias}</div>
+          <div class="stat-ext-lbl">Días del más antiguo activo</div>
+        </div>
+        <div class="stat-ext">
+          <div class="stat-ext-val">${data.length}</div>
+          <div class="stat-ext-lbl">Total registros (histórico)</div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-bottom:10px">Distribución actual por sección</div>
+      ${['PINTURA','RILDO','TERMINACION'].map(t=>{
+        const nombres = {PINTURA:'Pintura',RILDO:'Rildo',TERMINACION:'Terminación'};
+        const pct = totalActivos>0 ? Math.round((cnt[t]/totalActivos)*100) : 0;
+        return `
+          <div class="hist-bar-wrap">
+            <div class="hist-bar-label">
+              <span style="font-weight:500">${nombres[t]}</span>
+              <span style="color:var(--text2)">${cnt[t]} veh. · ${pct}%</span>
+            </div>
+            <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden">
+              <div class="hist-bar" style="width:${totalActivos>0?(cnt[t]/maxCnt*100):0}%"></div>
+            </div>
+          </div>`;
+      }).join('')}
+
+      <div class="section-title" style="margin-top:20px;margin-bottom:10px">Entregas por mes (últimos 6 meses)</div>
+      ${meses.map(m=>`
+        <div class="hist-bar-wrap">
+          <div class="hist-bar-label">
+            <span style="font-weight:500;text-transform:capitalize">${m.label}</span>
+            <span style="color:var(--text2)">${m.count} entregados</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden">
+            <div class="hist-bar" style="width:${m.count>0?(m.count/maxMes*100):0}%;background:var(--green)"></div>
+          </div>
+        </div>`).join('')}
+    `;
+  } catch(e){
+    cont.innerHTML = `<div class="empty">Error al cargar estadísticas: ${e.message}</div>`;
+  }
 }
 
 async function renderReportePreview(){
@@ -915,7 +1108,7 @@ if(saved){ currentUser=JSON.parse(saved); startApp(); }
 window.showAdminPanel = async function(){
   if(!isAdmin) return;
   document.getElementById('homeView').style.display='none';
-  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelAdmin'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin'].forEach(id=>document.getElementById(id).classList.remove('active'));
   document.getElementById('panelAdmin').classList.add('active');
   await loadUsersPanel();
 }
