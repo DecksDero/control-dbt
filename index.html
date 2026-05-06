@@ -82,6 +82,7 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
 
 /* APP */
 .app-screen{display:none;flex-direction:column;height:100vh;max-width:480px;margin:0 auto}
+.app-screen.logged-in{display:flex}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100}
 .topbar-left{display:flex;align-items:center;gap:10px}
 .topbar-logo{width:32px;height:32px;background:var(--text);border-radius:8px;display:flex;align-items:center;justify-content:center}
@@ -214,7 +215,7 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
 /* RESPONSIVE DESKTOP ≥ 1024px */
 @media (min-width:1024px){
   html,body{overflow:hidden}
-  .app-screen{
+  .app-screen.logged-in{
     max-width:100%;
     display:grid;
     grid-template-columns:220px 1fr;
@@ -617,14 +618,14 @@ window.doLogout = function(){
   currentUser=null;
   sessionStorage.removeItem('taller_user');
   if(realtimeSub) sb.removeChannel(realtimeSub);
-  document.getElementById('appScreen').style.display='none';
+  document.getElementById('appScreen').classList.remove('logged-in');
   document.getElementById('loginScreen').style.display='flex';
   closePanel();
 }
 
 async function startApp(){
   document.getElementById('loginScreen').style.display='none';
-  document.getElementById('appScreen').style.display='flex';
+  document.getElementById('appScreen').classList.add('logged-in');
   document.getElementById('userChip').textContent=currentUser.display||currentUser.user;
   const sbUser = document.getElementById('sidebarUser');
   if(sbUser) sbUser.textContent = currentUser.display||currentUser.user;
@@ -707,7 +708,7 @@ window.showPanel = function(name){
   if(name==='salida'){document.getElementById('salidaSearch').value='';document.getElementById('salidaConfirm').innerHTML='';salidaSelectedId=null;renderSalidaList('');}
   if(name==='pendientes'){document.getElementById('bnav-pendientes').classList.add('active');renderPendientes();}
   if(name==='reporte'){renderReportePreview();}
-  if(name==='estadisticas'){document.getElementById('bnav-estadisticas').classList.add('active');renderEstadisticas();}
+  if(name==='estadisticas'){document.getElementById('bnav-estadisticas').classList.add('active');statsData=null;renderEstadisticas();}
 }
 
 window.goHome = function(){
@@ -907,108 +908,156 @@ window.showTaller = async function(taller){
   `).join('');
 }
 
+let statsData = null; // cache de datos para no volver a consultar al cambiar vista
+let statsVista = 'mensual'; // 'mensual' | 'semanal'
+
 async function renderEstadisticas(){
   const cont = document.getElementById('statsExtContent');
-  cont.innerHTML = '<div class="loading">Cargando estadísticas...</div>';
-  try {
-    const {data} = await sb.from('vehiculos').select('taller,ingreso,salida');
-    if(!data){ cont.innerHTML='<div class="empty">Sin datos.</div>'; return; }
-
-    const entregados = data.filter(v=>v.salida);
-    const enTaller = data.filter(v=>!v.salida);
-
-    // Promedio de días en taller (entregados)
-    let promDias = 0;
-    if(entregados.length){
-      const totalDias = entregados.reduce((acc,v)=>acc+diasEnTaller(v.ingreso,v.salida),0);
-      promDias = Math.round(totalDias / entregados.length);
+  if(!statsData){
+    cont.innerHTML = '<div class="loading">Cargando estadísticas...</div>';
+    try {
+      const {data, error} = await sb.from('vehiculos').select('taller,ingreso,salida');
+      if(error) throw error;
+      statsData = data || [];
+    } catch(e){
+      cont.innerHTML = `<div class="empty">Error al cargar estadísticas: ${e.message}</div>`;
+      return;
     }
+  }
+  renderEstadisticasVista();
+}
 
-    // Máximo días actualmente en taller
-    const maxDias = enTaller.length
-      ? Math.max(...enTaller.map(v=>diasEnTaller(v.ingreso,null)))
-      : 0;
+function renderEstadisticasVista(){
+  const cont = document.getElementById('statsExtContent');
+  const data = statsData;
+  const entregados = data.filter(v=>v.salida);
+  const enTaller   = data.filter(v=>!v.salida);
 
-    // Conteo por taller (activos)
-    const cnt = {PINTURA:0,RILDO:0,TERMINACION:0};
-    enTaller.forEach(v=>{ if(cnt[v.taller]!==undefined) cnt[v.taller]++; });
-    const totalActivos = enTaller.length;
-    const maxCnt = Math.max(...Object.values(cnt), 1);
+  // Totales
+  let promDias = 0;
+  if(entregados.length){
+    promDias = Math.round(entregados.reduce((acc,v)=>acc+diasEnTaller(v.ingreso,v.salida),0) / entregados.length);
+  }
+  const maxDias = enTaller.length ? Math.max(...enTaller.map(v=>diasEnTaller(v.ingreso,null))) : 0;
 
-    // Entregados por mes (últimos 6 meses)
-    const now = new Date();
-    const meses = [];
-    for(let i=5;i>=0;i--){
+  // Distribución activos por taller
+  const cnt = {PINTURA:0,RILDO:0,TERMINACION:0};
+  enTaller.forEach(v=>{ if(cnt[v.taller]!==undefined) cnt[v.taller]++; });
+  const totalActivos = enTaller.length;
+  const maxCnt = Math.max(...Object.values(cnt), 1);
+
+  // Períodos
+  const now = new Date();
+  let periodos = [];
+
+  if(statsVista === 'mensual'){
+    for(let i=11;i>=0;i--){
       const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-      meses.push({
+      periodos.push({
         label: d.toLocaleDateString('es-CL',{month:'short',year:'2-digit'}),
-        key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
+        key:   `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
         count: 0
       });
     }
     entregados.forEach(v=>{
-      if(!v.salida) return;
       const key = v.salida.slice(0,7);
-      const m = meses.find(m=>m.key===key);
-      if(m) m.count++;
+      const p = periodos.find(p=>p.key===key);
+      if(p) p.count++;
     });
-    const maxMes = Math.max(...meses.map(m=>m.count), 1);
+  } else {
+    // últimas 12 semanas
+    for(let i=11;i>=0;i--){
+      const start = new Date(now);
+      start.setDate(now.getDate() - i*7 - now.getDay() + 1);
+      const end = new Date(start);
+      end.setDate(start.getDate()+6);
+      const fmt = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+      periodos.push({
+        label: `${fmt(start)} – ${fmt(end)}`,
+        startStr: start.toISOString().slice(0,10),
+        endStr:   end.toISOString().slice(0,10),
+        count: 0
+      });
+    }
+    entregados.forEach(v=>{
+      const p = periodos.find(p=>v.salida >= p.startStr && v.salida <= p.endStr);
+      if(p) p.count++;
+    });
+  }
 
-    cont.innerHTML = `
-      <div class="stats-ext-grid">
-        <div class="stat-ext accent" style="grid-column:span 2">
-          <div class="stat-ext-val">${entregados.length}</div>
-          <div class="stat-ext-lbl">Vehículos entregados (historial total)</div>
-        </div>
-        <div class="stat-ext">
-          <div class="stat-ext-val">${totalActivos}</div>
-          <div class="stat-ext-lbl">En taller ahora</div>
-        </div>
-        <div class="stat-ext">
-          <div class="stat-ext-val">${promDias}</div>
-          <div class="stat-ext-lbl">Días promedio en taller</div>
-        </div>
-        <div class="stat-ext">
-          <div class="stat-ext-val">${maxDias}</div>
-          <div class="stat-ext-lbl">Días del más antiguo activo</div>
-        </div>
-        <div class="stat-ext">
-          <div class="stat-ext-val">${data.length}</div>
-          <div class="stat-ext-lbl">Total registros (histórico)</div>
-        </div>
-      </div>
+  const maxP = Math.max(...periodos.map(p=>p.count), 1);
 
-      <div class="section-title" style="margin-bottom:10px">Distribución actual por sección</div>
-      ${['PINTURA','RILDO','TERMINACION'].map(t=>{
-        const nombres = {PINTURA:'Pintura',RILDO:'Rildo',TERMINACION:'Terminación'};
-        const pct = totalActivos>0 ? Math.round((cnt[t]/totalActivos)*100) : 0;
-        return `
-          <div class="hist-bar-wrap">
-            <div class="hist-bar-label">
-              <span style="font-weight:500">${nombres[t]}</span>
-              <span style="color:var(--text2)">${cnt[t]} veh. · ${pct}%</span>
-            </div>
-            <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden">
-              <div class="hist-bar" style="width:${totalActivos>0?(cnt[t]/maxCnt*100):0}%"></div>
-            </div>
-          </div>`;
-      }).join('')}
+  cont.innerHTML = `
+    <!-- TOGGLE -->
+    <div style="display:flex;gap:8px;margin-bottom:20px">
+      <button onclick="switchStatsVista('mensual')" id="btn-vista-mensual"
+        style="flex:1;padding:9px;border-radius:var(--radius-sm);border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;background:${statsVista==='mensual'?'var(--text)':'var(--surface2)'};color:${statsVista==='mensual'?'#fff':'var(--text2)'}">
+        Mensual
+      </button>
+      <button onclick="switchStatsVista('semanal')" id="btn-vista-semanal"
+        style="flex:1;padding:9px;border-radius:var(--radius-sm);border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;background:${statsVista==='semanal'?'var(--text)':'var(--surface2)'};color:${statsVista==='semanal'?'#fff':'var(--text2)'}">
+        Semanal
+      </button>
+    </div>
 
-      <div class="section-title" style="margin-top:20px;margin-bottom:10px">Entregas por mes (últimos 6 meses)</div>
-      ${meses.map(m=>`
+    <!-- ENTREGAS POR PERÍODO — VISTA PRINCIPAL -->
+    <div class="section-title" style="margin-bottom:10px">
+      ${statsVista==='mensual'?'Entregas por mes (últimos 12 meses)':'Entregas por semana (últimas 12 semanas)'}
+    </div>
+    ${periodos.map(p=>{
+      const pct = Math.round((p.count/maxP)*100);
+      const color = p.count === 0 ? 'var(--border2)' : 'var(--green)';
+      return `
         <div class="hist-bar-wrap">
           <div class="hist-bar-label">
-            <span style="font-weight:500;text-transform:capitalize">${m.label}</span>
-            <span style="color:var(--text2)">${m.count} entregados</span>
+            <span style="font-weight:500;text-transform:capitalize">${p.label}</span>
+            <span style="font-family:'DM Mono',monospace;font-weight:600;font-size:14px;color:${p.count>0?'var(--text)':'var(--text3)'}">${p.count}</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:3px;height:8px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .4s"></div>
+          </div>
+        </div>`;
+    }).join('')}
+
+    <!-- RESUMEN TOTALES -->
+    <div class="section-title" style="margin-top:24px;margin-bottom:10px">Resumen general</div>
+    <div class="stats-ext-grid" style="margin-bottom:16px">
+      <div class="stat-ext accent" style="grid-column:span 2">
+        <div class="stat-ext-val">${entregados.length}</div>
+        <div class="stat-ext-lbl">Total entregados (historial)</div>
+      </div>
+      <div class="stat-ext">
+        <div class="stat-ext-val">${totalActivos}</div>
+        <div class="stat-ext-lbl">En taller ahora</div>
+      </div>
+      <div class="stat-ext">
+        <div class="stat-ext-val">${promDias}</div>
+        <div class="stat-ext-lbl">Días prom. en taller</div>
+      </div>
+    </div>
+
+    <!-- DISTRIBUCIÓN POR SECCIÓN -->
+    <div class="section-title" style="margin-bottom:10px">Distribución actual por sección</div>
+    ${['PINTURA','RILDO','TERMINACION'].map(t=>{
+      const nombres = {PINTURA:'Pintura',RILDO:'Rildo',TERMINACION:'Terminación'};
+      const pct = totalActivos>0 ? Math.round((cnt[t]/totalActivos)*100) : 0;
+      return `
+        <div class="hist-bar-wrap">
+          <div class="hist-bar-label">
+            <span style="font-weight:500">${nombres[t]}</span>
+            <span style="color:var(--text2)">${cnt[t]} veh. · ${pct}%</span>
           </div>
           <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden">
-            <div class="hist-bar" style="width:${m.count>0?(m.count/maxMes*100):0}%;background:var(--green)"></div>
+            <div style="height:100%;width:${totalActivos>0?(cnt[t]/maxCnt*100):0}%;background:var(--blue);border-radius:3px;transition:width .4s"></div>
           </div>
-        </div>`).join('')}
-    `;
-  } catch(e){
-    cont.innerHTML = `<div class="empty">Error al cargar estadísticas: ${e.message}</div>`;
-  }
+        </div>`;
+    }).join('')}
+  `;
+}
+
+window.switchStatsVista = function(vista){
+  statsVista = vista;
+  renderEstadisticasVista();
 }
 
 async function renderReportePreview(){
