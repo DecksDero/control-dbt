@@ -212,6 +212,76 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
 .hist-bar-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
 .hist-bar{height:6px;border-radius:3px;background:var(--blue);transition:width .4s}
 
+/* PRESUPUESTO SUB-TABS */
+.presup-tabs{display:flex;border-bottom:1px solid var(--border);margin:0 -16px 14px;padding:0 16px}
+.presup-tab{flex:1;padding:10px 4px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);border:none;border-bottom:2px solid transparent;background:none;transition:all .15s}
+.presup-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.presup-tab-badge{display:inline-block;background:var(--red);color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;min-width:14px;text-align:center;margin-left:3px;line-height:14px;vertical-align:middle}
+
+/* DETALLE PRESUPUESTO */
+.detail-header-inline{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.d-patente{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;letter-spacing:.5px}
+.d-sub{font-size:13px;color:var(--text2);margin-top:2px}
+.status-row-inline{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.status-btn-inline{flex:1;min-width:90px;padding:8px 4px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;text-align:center;transition:all .15s}
+.status-btn-inline.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue-text)}
+.info-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.info-cell{background:var(--surface2);border-radius:var(--radius-sm);padding:9px 12px}
+.info-cell-label{font-size:11px;color:var(--text3);margin-bottom:2px}
+.info-cell-val{font-size:13px;font-weight:500}
+.obs-box-inline{background:var(--surface2);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--text2);line-height:1.6}
+
+/* CHECKLIST FORM */
+#panelChecklist.active{display:flex!important;flex-direction:column;overflow:hidden}
+#cl-steps{flex:1;overflow-y:auto}
+.cl-form-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.cl-form-title{font-size:15px;font-weight:600}
+.cl-form-sub{font-size:12px;color:var(--text3);margin-top:1px}
+.cl-progress{display:flex;gap:4px;padding:8px 16px;background:var(--surface);flex-shrink:0}
+.cl-prog-dot{height:3px;flex:1;border-radius:2px;background:var(--surface2);transition:background .3s}
+.cl-prog-dot.done{background:var(--green)}
+.cl-prog-dot.cur{background:var(--blue)}
+.cl-step{display:none}.cl-step.active{display:block}
+.cl-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.cl-field label{font-size:12px;font-weight:500;color:var(--text3);letter-spacing:.04em;text-transform:uppercase}
+.cl-field input,.cl-field select,.cl-field textarea{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:15px;padding:10px 12px;outline:none;-webkit-appearance:none;appearance:none;width:100%}
+.cl-field input:focus,.cl-field select:focus,.cl-field textarea:focus{border-color:var(--blue)}
+.cl-field textarea{resize:none}
+.cl-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cl-fuel-row{display:flex;gap:6px;margin-top:4px}
+.cl-fuel-seg{flex:1;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text3);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:500;transition:all .15s}
+.cl-fuel-seg.on{background:var(--green-bg);border-color:var(--green-text);color:var(--green-text)}
+.cl-tog-row{display:flex;gap:8px;margin-top:4px;margin-bottom:4px}
+.cl-tog-opt{flex:1;padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text2);font-size:13px;cursor:pointer;text-align:center;font-weight:500;transition:all .15s}
+.cl-tog-opt.ok{border-color:var(--green-text);background:var(--green-bg);color:var(--green-text)}
+.cl-tog-opt.warn{border-color:var(--amber-text);background:var(--amber-bg);color:var(--amber-text)}
+.cl-tog-opt.info{border-color:var(--blue-text);background:var(--blue-bg);color:var(--blue-text)}
+.cl-section-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px}
+.cl-section-label:first-child{margin-top:0}
+.cl-check-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;background:var(--surface);transition:all .15s;margin-bottom:8px;width:100%}
+.cl-check-item.on{background:var(--green-bg);border-color:var(--green-text);color:var(--green-text)}
+.cl-check-item input{accent-color:var(--green);width:15px;height:15px;flex-shrink:0}
+.cl-qty-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);margin-bottom:8px}
+.cl-qty-label{font-size:14px}
+.cl-qty-ctrl{display:flex;align-items:center;gap:10px}
+.cl-qty-btn{width:30px;height:30px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.cl-qty-val{font-size:16px;font-weight:600;min-width:22px;text-align:center;font-family:'DM Mono',monospace}
+.cl-tags-wrap{display:flex;flex-wrap:wrap;gap:6px;min-height:32px;margin-bottom:8px}
+.cl-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid var(--border2);border-radius:20px;font-size:12px;background:var(--surface2);color:var(--text2)}
+.cl-tag button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;line-height:1;padding:0}
+.cl-add-row{display:flex;gap:8px}
+.cl-add-row input{flex:1;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;padding:9px 12px;outline:none}
+.cl-add-row button{padding:9px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;cursor:pointer;white-space:nowrap}
+.cl-nav-btns{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.cl-nav-btns button{flex:1;padding:12px;font-size:14px;font-weight:600;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text)}
+.cl-nav-btns button.cl-next{background:var(--text);color:#fff;border-color:var(--text)}
+.cl-summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px}
+.cl-sum-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)}
+.cl-sum-row:last-child{border-bottom:none}
+.cl-sum-row span:first-child{color:var(--text2)}
+.cl-sum-row span:last-child{font-weight:500;text-align:right;max-width:65%}
+.cl-sum-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+
 /* PRESUPUESTO DETAIL IN SEARCH / PANEL */
 .rc-veh-info{font-size:13px;color:var(--text2);font-weight:500;padding:6px 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px}
 .rc-presup-section{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
@@ -407,14 +477,129 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
     <div id="salidaConfirm"></div>
   </div>
 
-  <!-- PANEL PRESUPUESTOS PENDIENTES -->
-  <div class="panel" id="panelPendientes">
-    <div class="panel-header">
+  <!-- PANEL PRESUPUESTOS -->
+  <div class="panel" id="panelPendientes" style="padding-top:0">
+    <div class="panel-header" style="position:sticky;top:0;background:var(--surface);z-index:10;padding-top:16px">
       <button class="back-btn" onclick="closePanel()">← Volver</button>
-      <h2>Estado de presupuestos</h2>
+      <h2>Presupuestos</h2>
     </div>
-    <button class="big-btn btn-dark" onclick="window.open('../Presupuestos/index.html','_blank')" style="margin-bottom:14px;padding:10px;font-size:13px">Abrir app de Presupuestos →</button>
+    <div class="presup-tabs">
+      <button class="presup-tab active" id="ptab-pendiente" onclick="switchPresupTab('pendiente')">Sin datos<span class="presup-tab-badge" id="ptbadge-pendiente" style="display:none"></span></button>
+      <button class="presup-tab" id="ptab-datos" onclick="switchPresupTab('datos')">Con datos<span class="presup-tab-badge" id="ptbadge-datos" style="display:none"></span></button>
+      <button class="presup-tab" id="ptab-enviado" onclick="switchPresupTab('enviado')">Enviado</button>
+    </div>
     <div id="pendientesList"></div>
+  </div>
+
+  <!-- PANEL DETALLE PRESUPUESTO -->
+  <div class="panel" id="panelPresupDetalle">
+    <div class="detail-header-inline">
+      <button class="back-btn" onclick="volverDesdeDetalle()">← Volver</button>
+      <div>
+        <div class="d-patente" id="pd-patente">—</div>
+        <div class="d-sub" id="pd-sub">—</div>
+      </div>
+    </div>
+    <div class="section-title">Estado</div>
+    <div class="status-row-inline" id="pd-status-row"></div>
+    <div class="section-title">Datos del vehículo</div>
+    <div class="info-grid-2" id="pd-info-grid"></div>
+    <div id="pd-reps-section" style="display:none">
+      <div class="section-title" style="margin-top:14px">Trabajos de reparación</div>
+      <div class="tag-wrap" id="pd-trabajos" style="margin-bottom:12px"></div>
+      <div class="section-title">Repuestos</div>
+      <div class="tag-wrap" id="pd-repuestos" style="margin-bottom:12px"></div>
+    </div>
+    <div id="pd-obs-section" style="display:none">
+      <div class="section-title" style="margin-top:14px">Observaciones</div>
+      <div class="obs-box-inline" id="pd-obs" style="margin-bottom:12px"></div>
+    </div>
+    <button class="big-btn btn-dark" id="pd-btn-checklist" onclick="abrirChecklistInline()" style="margin-top:16px">Completar checklist</button>
+    <button class="big-btn" id="pd-btn-excel" onclick="generarExcelInline()" style="display:none;margin-top:10px;background:var(--green);color:#fff">Descargar Excel</button>
+  </div>
+
+  <!-- PANEL CHECKLIST FORM -->
+  <div class="panel" id="panelChecklist" style="padding:0">
+    <div class="cl-form-header">
+      <div>
+        <div class="cl-form-title" id="cl-form-title">Checklist</div>
+        <div class="cl-form-sub" id="cl-form-sub"></div>
+      </div>
+      <button class="back-btn" onclick="volverDesdeChecklist()">← Salir</button>
+    </div>
+    <div class="cl-progress" id="cl-progress"></div>
+    <div id="cl-steps" style="padding:14px 16px 16px">
+      <!-- PASO 0: Datos vehículo -->
+      <div class="cl-step active" id="cl-sf-0">
+        <div class="cl-grid2">
+          <div class="cl-field"><label>Patente</label><input id="cl-patente" placeholder="ABCD-12" style="text-transform:uppercase" oninput="clAutoSave()"></div>
+          <div class="cl-field"><label>Año</label><input id="cl-anio" type="number" placeholder="2024" oninput="clAutoSave()"></div>
+        </div>
+        <div class="cl-field"><label>Marca</label>
+          <select id="cl-marca" onchange="clUpdateModelos();clAutoSave()">
+            <option value="">Seleccionar...</option>
+          </select>
+        </div>
+        <div class="cl-field"><label>Modelo</label>
+          <select id="cl-modelo" onchange="clCheckOtroModelo();clAutoSave()"><option value="">Seleccionar marca primero</option></select>
+        </div>
+        <div class="cl-field" id="cl-otra-marca-row" style="display:none"><label>Especificar marca</label><input id="cl-otra-marca" placeholder="Ej: Suzuki..." oninput="clAutoSave()"></div>
+        <div class="cl-field" id="cl-otro-row" style="display:none"><label>Especificar modelo</label><input id="cl-otro-modelo" placeholder="Escribe el modelo..." oninput="clAutoSave()"></div>
+        <div class="cl-field"><label>Kilometraje</label><input id="cl-km" type="number" placeholder="85000" oninput="clAutoSave()"></div>
+        <div class="cl-field"><label>Combustible</label>
+          <div class="cl-fuel-row">
+            <div class="cl-fuel-seg" id="cl-fuel-1" onclick="clSetFuel(1)">1/4</div>
+            <div class="cl-fuel-seg" id="cl-fuel-2" onclick="clSetFuel(2)">2/4</div>
+            <div class="cl-fuel-seg" id="cl-fuel-3" onclick="clSetFuel(3)">3/4</div>
+            <div class="cl-fuel-seg" id="cl-fuel-4" onclick="clSetFuel(4)">4/4</div>
+          </div>
+        </div>
+      </div>
+      <!-- PASO 1: Accesorios -->
+      <div class="cl-step" id="cl-sf-1">
+        <div class="cl-section-label">Accesorios</div>
+        <div id="cl-acc-grid"></div>
+        <div class="cl-section-label">Parabrisas</div>
+        <div class="cl-tog-row">
+          <div class="cl-tog-opt" id="cl-pb-OK" onclick="clSetPB('OK')">OK</div>
+          <div class="cl-tog-opt" id="cl-pb-Trizado" onclick="clSetPB('Trizado')">Trizado</div>
+          <div class="cl-tog-opt" id="cl-pb-Picado" onclick="clSetPB('Picado')">Picado</div>
+        </div>
+        <div class="cl-section-label">Tapiz</div>
+        <div class="cl-tog-row">
+          <div class="cl-tog-opt" id="cl-tapiz-OK" onclick="clSetTapiz('OK')">OK</div>
+          <div class="cl-tog-opt" id="cl-tapiz-Sucio" onclick="clSetTapiz('Sucio')">Sucio</div>
+        </div>
+      </div>
+      <!-- PASO 2: Trabajos y repuestos -->
+      <div class="cl-step" id="cl-sf-2">
+        <div class="cl-section-label">Trabajos de reparación</div>
+        <div class="cl-tags-wrap" id="cl-trabajos-tags"></div>
+        <div class="cl-add-row">
+          <input id="cl-trab-input" placeholder="Ej: desabolladura capot..." onkeydown="if(event.key==='Enter')clAddTrabajo()">
+          <button onclick="clAddTrabajo()">+ Agregar</button>
+        </div>
+        <div class="cl-section-label">Repuestos necesarios</div>
+        <div class="cl-tags-wrap" id="cl-rep-tags"></div>
+        <div class="cl-add-row" style="margin-top:4px">
+          <input id="cl-rep-input" placeholder="Ej: paragolpe delantero..." onkeydown="if(event.key==='Enter')clAddRepuesto()">
+          <button onclick="clAddRepuesto()">+ Agregar</button>
+        </div>
+        <div class="cl-section-label">Observaciones</div>
+        <div class="cl-field">
+          <textarea id="cl-obs" placeholder="Notas del siniestro..." oninput="clAutoSave()" style="height:80px;line-height:1.5"></textarea>
+        </div>
+      </div>
+      <!-- PASO 3: Resumen -->
+      <div class="cl-step" id="cl-sf-3">
+        <div class="cl-section-label">Resumen</div>
+        <div id="cl-summary"></div>
+      </div>
+    </div>
+    <div class="cl-nav-btns">
+      <button id="cl-btn-prev" onclick="clPrevStep()" style="display:none">← Atrás</button>
+      <button class="cl-next" id="cl-btn-next" onclick="clNextStep()">Siguiente →</button>
+    </div>
   </div>
 
   <!-- PANEL IMPORT -->
@@ -570,6 +755,86 @@ let salidaSelectedId = null;
 let realtimeSub = null;
 let isAdmin = false;
 
+// ── Presupuestos integrados ──────────────────────────────────────
+const CL_ACCESORIOS=[
+  {key:'Documentos',tipo:'check'},{key:'Kit',tipo:'check'},{key:'TAG',tipo:'check'},
+  {key:'Pisos',tipo:'qty'},{key:'Patentes',tipo:'qty'},
+  {key:'Repuesto',tipo:'check'},{key:'Herramientas',tipo:'check'},
+  {key:'Bocina',tipo:'check'},{key:'Chaleco',tipo:'check'},{key:'Antena',tipo:'check'}
+];
+const CL_MODELOS={
+  'Citroën':['Berlingo','C3','C4','Jumpy','Dispatch','Otro'],
+  'Peugeot':['Partner','Expert','308','208','Boxer','Otro'],
+  'Volkswagen':['Amarok','Transporter','Polo','Golf','Crafter','Otro'],
+  'Toyota':['Hilux','Land Cruiser','Corolla','RAV4','Hiace','Otro'],
+  'Nissan':['NP300','Frontier','Qashqai','X-Trail','Urvan','Otro'],
+  'Hyundai':['Tucson','Santa Fe','Accent','H1','HD78','Otro'],
+  'Kia':['Sportage','Sorento','Morning','Stonic','K2700','Otro'],
+  'Chevrolet':['D-Max','S10','Captiva','Aveo','N300','Otro'],
+  'Ford':['F-150','Ranger','Escape','Transit','Fiesta','Otro'],
+  'Renault':['Kangoo','Duster','Logan','Sandero','Master','Trafic','Otro'],
+  'Mitsubishi':['L200','Outlander','ASX','Galant','Canter','Otro'],
+  'Otra':['Otro']
+};
+const CL_STEPS=4;
+let supavehiculos={};
+let presupTab='pendiente';
+let clCurrentPatente=null;
+let clStep=0;
+let clFst={combustible:0,parabrisas:'',tapiz:'',trabajos:[],repuestos:[],accesorios:{},accesoriosQty:{}};
+const ALL_PANELS=['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin','panelPresupDetalle','panelChecklist'];
+
+function activarPanel(id){
+  document.getElementById('homeView').style.display='none';
+  ALL_PANELS.forEach(pid=>{const el=document.getElementById(pid);if(el)el.classList.remove('active');});
+  const target=document.getElementById(id);if(target)target.classList.add('active');
+}
+
+// Custom models (shared localStorage with Presupuestos app)
+function clLoadCustomModelos(){try{return JSON.parse(localStorage.getItem('dbt_custom_modelos')||'{}');}catch(e){return{};}}
+function clSaveCustomBrandModel(marca,modelo){
+  if(!marca||marca==='Otra')return;
+  const c=clLoadCustomModelos();if(!c[marca])c[marca]=[];
+  if(modelo&&modelo!=='Otro'&&!c[marca].includes(modelo))c[marca].push(modelo);
+  localStorage.setItem('dbt_custom_modelos',JSON.stringify(c));
+}
+function clGetMergedModelos(){
+  const custom=clLoadCustomModelos();const merged={};
+  Object.entries(CL_MODELOS).forEach(([m,arr])=>{merged[m]=[...arr.filter(x=>x!=='Otro')];});
+  Object.entries(custom).forEach(([m,arr])=>{
+    if(!merged[m])merged[m]=[];
+    arr.forEach(x=>{if(!merged[m].includes(x))merged[m].push(x);});
+  });
+  Object.keys(merged).forEach(m=>{if(!merged[m].includes('Otro'))merged[m].push('Otro');});
+  return merged;
+}
+function clPopulateMarcas(){
+  const sel=document.getElementById('cl-marca');if(!sel)return;
+  const prev=sel.value;
+  const fixed=['Citroën','Peugeot','Renault','Volkswagen','Toyota','Nissan','Hyundai','Kia','Chevrolet','Ford','Mitsubishi'];
+  const custom=Object.keys(clLoadCustomModelos()).filter(b=>!fixed.includes(b)&&b!=='Otra').sort();
+  sel.innerHTML='<option value="">Seleccionar...</option>';
+  [...fixed,...custom].forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;sel.appendChild(o);});
+  const otra=document.createElement('option');otra.value='Otra';otra.textContent='Otra';sel.appendChild(otra);
+  if(prev)sel.value=prev;
+}
+
+async function loadSupavehiculos(){
+  const {data}=await sb.from('vehiculos').select('*').is('salida',null).order('ingreso',{ascending:true});
+  supavehiculos={};
+  (data||[]).forEach(v=>{
+    const pat=(v.patente||'').toUpperCase().trim();if(!pat)return;
+    const cl=parseChecklist(v.obs);
+    supavehiculos[pat]={
+      ...v,patente:pat,estado:estadoFromObs(v.obs)||'Pendiente de datos',
+      marca:cl?.marca||'',modelo:cl?.modelo||'',anio:cl?.anio||null,km:cl?.km||null,
+      combustible:cl?.combustible||0,parabrisas:cl?.parabrisas||'',tapiz:cl?.tapiz||'',
+      accesorios:cl?.accesorios||{},accesoriosQty:cl?.accesoriosQty||{},
+      trabajos:cl?.trabajos||[],repuestos:cl?.repuestos||[],observaciones:cl?.observaciones||''
+    };
+  });
+}
+
 function td(s){if(!s)return'—';const[y,m,d]=s.split('-');return d+'-'+m+'-'+y.slice(2);}
 function tallerBadge(t){const m={PINTURA:['b-pintura','Pintura'],RILDO:['b-rildo','Rildo'],TERMINACION:['b-terminacion','Terminación'],NA:['b-na','N/A']};const v=m[t]||['b-na',t];return`<span class="badge ${v[0]}">${v[1]}</span>`;}
 function today(){return new Date().toISOString().slice(0,10);}
@@ -717,7 +982,7 @@ window.showPanel = function(name){
     showToast('Solo el administrador puede gestionar usuarios','err');return;
   }
   document.getElementById('homeView').style.display='none';
-  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin'].forEach(id=>{
+  ALL_PANELS.forEach(id=>{
     document.getElementById(id).classList.remove('active');
   });
   document.getElementById('panel'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
@@ -736,8 +1001,9 @@ window.showPanel = function(name){
 }
 
 window.goHome = function(){
+  document.querySelector('.bottom-nav').style.display='flex';
   document.getElementById('homeView').style.display='block';
-  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ALL_PANELS.forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('active');});
   document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('bnav-home').classList.add('active');
   loadStats();
@@ -891,56 +1157,329 @@ window.confirmSalida = async function(id, pat){
 }
 
 async function renderPendientes(){
+  document.getElementById('pendientesList').innerHTML='<div class="loading">Cargando...</div>';
+  await loadSupavehiculos();
+  switchPresupTab(presupTab);
+}
+
+window.switchPresupTab=function(tab){
+  presupTab=tab;
+  ['pendiente','datos','enviado'].forEach(t=>{
+    const btn=document.getElementById('ptab-'+t);if(btn)btn.classList.toggle('active',t===tab);
+  });
+  const all=Object.values(supavehiculos);
+  const pendCount=all.filter(v=>v.estado==='Pendiente de datos').length;
+  const datosCount=all.filter(v=>v.estado==='Con datos'||v.estado==='Presupuesto terminado').length;
+  const pb=document.getElementById('ptbadge-pendiente');const db=document.getElementById('ptbadge-datos');
+  if(pb){pb.textContent=pendCount;pb.style.display=pendCount?'inline-block':'none';}
+  if(db){db.textContent=datosCount;db.style.display=datosCount?'inline-block':'none';}
+  let list;
+  if(tab==='pendiente')list=all.filter(v=>v.estado==='Pendiente de datos');
+  else if(tab==='datos')list=all.filter(v=>v.estado==='Con datos'||v.estado==='Presupuesto terminado');
+  else list=all.filter(v=>v.estado==='Presupuesto enviado');
+  list.sort((a,b)=>(a.ingreso||'').localeCompare(b.ingreso||''));
+  renderPresupList(list);
+}
+
+function renderPresupList(list){
   const cont=document.getElementById('pendientesList');
-  cont.innerHTML='<div class="loading">Cargando...</div>';
-  const {data}=await sb.from('vehiculos').select('*').is('salida',null).order('ingreso',{ascending:true});
-  if(!data||!data.length){
-    cont.innerHTML='<div class="empty">No hay presupuestos activos en este momento.</div>';
-    return;
-  }
+  if(!list.length){cont.innerHTML='<div class="empty">Sin vehículos en esta categoría.</div>';return;}
   const statusStyles={
     'Pendiente de datos':{cls:'presup-pendiente',label:'Sin datos'},
     'Con datos':{cls:'presup-con-datos',label:'Con datos'},
     'Presupuesto terminado':{cls:'presup-con-datos',label:'Presupuesto listo'},
     'Presupuesto enviado':{cls:'presup-enviado',label:'Presupuesto enviado'},
   };
-  const escHtml=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  cont.innerHTML=data.map(v=>{
-    const cl=parseChecklist(v.obs);
-    const estado=estadoFromObs(v.obs)||'Pendiente de datos';
-    const ss=statusStyles[estado]||{cls:'presup-pendiente',label:estado};
-    const vehInfo=cl?[cl.marca,cl.modelo,cl.anio].filter(Boolean).join(' '):'';
-    const trabajos=cl?.trabajos||[];
-    const repuestos=cl?.repuestos||[];
-    const tienePresup=trabajos.length||repuestos.length;
+  const escHtml=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  cont.innerHTML=list.map(v=>{
+    const ss=statusStyles[v.estado]||{cls:'presup-pendiente',label:v.estado};
+    const vehInfo=[v.marca,v.modelo,v.anio].filter(Boolean).join(' ');
     return `
-      <div class="result-card">
-        <div class="rc-top">
-          <span class="rc-pat">${v.patente}</span>
-          ${tallerBadge(v.taller)}
-        </div>
+      <div class="result-card" style="cursor:pointer" onclick="abrirPresupDetalle('${v.patente}')">
+        <div class="rc-top"><span class="rc-pat">${v.patente}</span>${tallerBadge(v.taller)}</div>
         ${vehInfo?`<div class="rc-veh-info">${escHtml(vehInfo)}</div>`:''}
         <div class="rc-rows">
           <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
-          <div class="rc-row"><span>Días</span><span style="font-weight:600;color:var(--blue)">${diasEnTaller(v.ingreso,null)} días</span></div>
-          ${cl?.km?`<div class="rc-row"><span>KM</span><span>${Number(cl.km).toLocaleString('es-CL')} km</span></div>`:''}
+          <div class="rc-row"><span>Días en taller</span><span style="font-weight:600;color:var(--blue)">${diasEnTaller(v.ingreso,null)} días</span></div>
+          ${v.km?`<div class="rc-row"><span>KM</span><span>${Number(v.km).toLocaleString('es-CL')} km</span></div>`:''}
         </div>
         <div class="presup-badge ${ss.cls}"><span class="presup-dot"></span>${ss.label}</div>
-        ${tienePresup?`
-        <button class="rc-expand-btn" onclick="togglePresupDetalle(this,'pend-${v.id}')">Ver presupuesto ▾</button>
-        <div class="rc-presup-section" id="pend-${v.id}">
-          ${trabajos.length?`<div class="rc-sub-label">Trabajos</div><div class="tag-wrap">${trabajos.map(t=>`<span class="rc-tag trabajo">${escHtml(t)}</span>`).join('')}</div>`:''}
-          ${repuestos.length?`<div class="rc-sub-label">Repuestos</div><div class="tag-wrap">${repuestos.map(r=>`<span class="rc-tag">${escHtml(r)}</span>`).join('')}</div>`:''}
-          ${cl?.observaciones?`<div class="rc-sub-label">Observaciones</div><div class="presup-obs">${escHtml(cl.observaciones)}</div>`:''}
-        </div>`:''}
       </div>`;
   }).join('');
 }
 
+window.abrirPresupDetalle=function(patente){
+  const pat=(patente||'').toUpperCase().trim();
+  const v=supavehiculos[pat];if(!v){showToast('Vehículo no encontrado','err');return;}
+  clCurrentPatente=pat;
+  document.getElementById('pd-patente').textContent=pat;
+  document.getElementById('pd-sub').textContent=[v.marca,v.modelo,v.anio].filter(Boolean).join(' ')||'Sin datos';
+  const ESTADOS_P=['Pendiente de datos','Con datos','Presupuesto terminado','Presupuesto enviado'];
+  const statusLabels={'Pendiente de datos':'Sin datos','Con datos':'Con datos','Presupuesto terminado':'Terminado','Presupuesto enviado':'Enviado'};
+  document.getElementById('pd-status-row').innerHTML=ESTADOS_P.map(e=>`
+    <button class="status-btn-inline ${v.estado===e?'active':''}" onclick="cambiarEstadoPresup('${e}')">${statusLabels[e]||e}</button>
+  `).join('');
+  document.getElementById('pd-info-grid').innerHTML=[
+    ['Taller',v.taller||'—'],['KM',v.km?Number(v.km).toLocaleString('es-CL')+' km':'—'],
+    ['Combustible',v.combustible?v.combustible+'/4':'—'],['Parabrisas',v.parabrisas||'—'],
+    ['Tapiz',v.tapiz||'—'],['Ingreso',v.ingreso||'—'],
+  ].map(([l,val])=>`<div class="info-cell"><div class="info-cell-label">${l}</div><div class="info-cell-val">${val}</div></div>`).join('');
+  const escHtml=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const repsec=document.getElementById('pd-reps-section');
+  const trabajos=v.trabajos||[];const repuestos=v.repuestos||[];
+  if(trabajos.length||repuestos.length){
+    repsec.style.display='block';
+    document.getElementById('pd-trabajos').innerHTML=trabajos.map(t=>`<span class="rc-tag trabajo">${escHtml(t)}</span>`).join('')||'<span style="color:var(--text3);font-size:13px">Ninguno</span>';
+    document.getElementById('pd-repuestos').innerHTML=repuestos.map(r=>`<span class="rc-tag">${escHtml(r)}</span>`).join('')||'<span style="color:var(--text3);font-size:13px">Ninguno</span>';
+  }else{repsec.style.display='none';}
+  const obs=v.observaciones||'';const obsec=document.getElementById('pd-obs-section');
+  if(obs){obsec.style.display='block';document.getElementById('pd-obs').textContent=obs;}
+  else{obsec.style.display='none';}
+  const tieneChecklist=!!(v.trabajos?.length||v.repuestos?.length||v.parabrisas);
+  document.getElementById('pd-btn-checklist').textContent=tieneChecklist?'Editar checklist':'Completar checklist';
+  const puedeExcel=['Presupuesto terminado','Presupuesto enviado'].includes(v.estado);
+  document.getElementById('pd-btn-excel').style.display=puedeExcel?'block':'none';
+  activarPanel('panelPresupDetalle');
+}
+
+window.volverDesdeDetalle=function(){activarPanel('panelPendientes');}
+
+window.cambiarEstadoPresup=async function(estado){
+  if(!clCurrentPatente)return;
+  const pat=clCurrentPatente;const v=supavehiculos[pat];if(!v)return;
+  const obsValue=v.obs&&v.obs.includes('||')?estado+'||'+v.obs.split('||')[1]:estado;
+  try{
+    const{error}=await sb.from('vehiculos').update({obs:obsValue}).eq('patente',pat);
+    if(error)throw error;
+    supavehiculos[pat].obs=obsValue;supavehiculos[pat].estado=estado;
+    document.getElementById('pd-status-row').querySelectorAll('.status-btn-inline').forEach((b,i)=>{
+      b.classList.toggle('active',['Pendiente de datos','Con datos','Presupuesto terminado','Presupuesto enviado'][i]===estado);
+    });
+    const puedeExcel=['Presupuesto terminado','Presupuesto enviado'].includes(estado);
+    document.getElementById('pd-btn-excel').style.display=puedeExcel?'block':'none';
+    showToast('Estado: '+estado,'ok');
+  }catch(e){showToast('Error: '+e.message,'err');}
+}
+
+// ── Checklist form ───────────────────────────────────────────────
+window.abrirChecklistInline=function(){
+  const pat=clCurrentPatente;if(!pat)return;
+  const v=supavehiculos[pat];if(!v)return;
+  clFst={
+    combustible:v.combustible||0,parabrisas:v.parabrisas||'',tapiz:v.tapiz||'',
+    trabajos:[...(v.trabajos||[])],repuestos:[...(v.repuestos||[])],
+    accesorios:{...(v.accesorios||{})},accesoriosQty:{...(v.accesoriosQty||{})}
+  };
+  document.getElementById('cl-form-title').textContent=pat;
+  document.getElementById('cl-form-sub').textContent=v.taller||'';
+  clPopulateMarcas();
+  document.getElementById('cl-patente').value=pat;
+  document.getElementById('cl-anio').value=v.anio||'';
+  document.getElementById('cl-km').value=v.km||'';
+  document.getElementById('cl-obs').value=v.observaciones||'';
+  if(v.marca){
+    const marcaSel=document.getElementById('cl-marca');
+    if(!Array.from(marcaSel.options).some(o=>o.value===v.marca)&&v.marca!=='Otra'){clSaveCustomBrandModel(v.marca,'');clPopulateMarcas();}
+    marcaSel.value=v.marca;clUpdateModelos();
+  }
+  if(v.modelo){
+    const modeloSel=document.getElementById('cl-modelo');
+    if(!Array.from(modeloSel.options).some(o=>o.value===v.modelo)&&v.modelo!=='Otro'&&v.marca&&v.marca!=='Otra'){clSaveCustomBrandModel(v.marca,v.modelo);clUpdateModelos();}
+    modeloSel.value=v.modelo;clCheckOtroModelo();
+  }
+  clSetFuelVal(clFst.combustible);
+  if(clFst.parabrisas)clSetPBVal(clFst.parabrisas);
+  if(clFst.tapiz)clSetTapizVal(clFst.tapiz);
+  clRenderAccGrid();clRenderWorking();clRenderReps();
+  document.querySelector('.bottom-nav').style.display='none';
+  clGoStep(0);activarPanel('panelChecklist');
+}
+
+window.volverDesdeChecklist=function(){
+  document.querySelector('.bottom-nav').style.display='flex';
+  activarPanel('panelPresupDetalle');
+  if(clCurrentPatente&&supavehiculos[clCurrentPatente])abrirPresupDetalle(clCurrentPatente);
+}
+
+function clGoStep(n){
+  document.querySelectorAll('.cl-step').forEach(s=>s.classList.remove('active'));
+  clStep=n;
+  const el=document.getElementById('cl-sf-'+n);if(el)el.classList.add('active');
+  const bar=document.getElementById('cl-progress');
+  if(bar){bar.innerHTML='';for(let i=0;i<CL_STEPS;i++){const d=document.createElement('div');d.className='cl-prog-dot'+(i<n?' done':i===n?' cur':'');bar.appendChild(d);}}
+  document.getElementById('cl-btn-prev').style.display=n===0?'none':'block';
+  document.getElementById('cl-btn-next').textContent=n===CL_STEPS-1?'Guardar ✓':'Siguiente →';
+  if(n===CL_STEPS-1)clRenderSummary();
+}
+
+window.clNextStep=async function(){
+  if(clStep===CL_STEPS-1){
+    const ok=await clSaveChecklist();
+    if(ok){showToast('Guardado correctamente','ok');setTimeout(()=>volverDesdeChecklist(),600);}
+    return;
+  }
+  clGoStep(clStep+1);
+}
+window.clPrevStep=function(){if(clStep>0)clGoStep(clStep-1);}
+
+async function clSaveChecklist(){
+  const pat=clCurrentPatente;if(!pat){showToast('Error: no hay patente','err');return false;}
+  const marcaVal=document.getElementById('cl-marca').value;
+  const marca=marcaVal==='Otra'?(document.getElementById('cl-otra-marca')?.value||'Otra'):marcaVal;
+  const modeloVal=document.getElementById('cl-modelo').value;
+  const modelo=modeloVal==='Otro'?(document.getElementById('cl-otro-modelo')?.value||'Otro'):modeloVal;
+  const anio=document.getElementById('cl-anio').value;
+  const km=document.getElementById('cl-km').value;
+  const obs=document.getElementById('cl-obs').value.trim();
+  const estado=(clFst.trabajos?.length||clFst.repuestos?.length)?'Presupuesto terminado':'Con datos';
+  const checklist={
+    marca:marca||'',modelo:modelo||'',anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
+    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',
+    accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
+    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:obs||''
+  };
+  const obsValue=estado+'||'+JSON.stringify(checklist);
+  try{
+    const{error}=await sb.from('vehiculos').update({obs:obsValue}).eq('patente',pat);
+    if(error)throw error;
+    if(supavehiculos[pat]){supavehiculos[pat].obs=obsValue;supavehiculos[pat].estado=estado;Object.assign(supavehiculos[pat],checklist);}
+    if(marcaVal==='Otra'&&marca)clSaveCustomBrandModel(marca,modelo||'');
+    else if(modeloVal==='Otro'&&modelo&&marcaVal&&marcaVal!=='Otra')clSaveCustomBrandModel(marcaVal,modelo);
+    return true;
+  }catch(e){showToast('Error al guardar: '+e.message,'err');return false;}
+}
+
+function clAutoSave(){
+  const pat=clCurrentPatente;if(!pat)return;
+  const marcaVal=document.getElementById('cl-marca')?.value||'';
+  const marca=marcaVal==='Otra'?(document.getElementById('cl-otra-marca')?.value||''):marcaVal;
+  const modeloVal=document.getElementById('cl-modelo')?.value||'';
+  const modelo=modeloVal==='Otro'?(document.getElementById('cl-otro-modelo')?.value||''):modeloVal;
+  const anio=document.getElementById('cl-anio')?.value||'';
+  const km=document.getElementById('cl-km')?.value||'';
+  const obs=document.getElementById('cl-obs')?.value||'';
+  const currentEstado=supavehiculos[pat]?.estado||'Pendiente de datos';
+  const checklist={
+    marca,modelo,anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
+    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',
+    accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
+    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:obs
+  };
+  const obsValue=currentEstado+'||'+JSON.stringify(checklist);
+  clearTimeout(clAutoSave._timer);
+  clAutoSave._timer=setTimeout(async()=>{
+    try{
+      const{error}=await sb.from('vehiculos').update({obs:obsValue}).eq('patente',pat);
+      if(error)throw error;
+      if(supavehiculos[pat])Object.assign(supavehiculos[pat],checklist);
+    }catch(e){console.warn('autoSave:',e.message);}
+  },1200);
+}
+window.clAutoSave=clAutoSave;
+
+window.clUpdateModelos=function(){
+  const marca=document.getElementById('cl-marca').value;
+  const sel=document.getElementById('cl-modelo');sel.innerHTML='';
+  const otraMarcaRow=document.getElementById('cl-otra-marca-row');
+  if(!marca){sel.innerHTML='<option value="">Seleccionar marca primero</option>';document.getElementById('cl-otro-row').style.display='none';if(otraMarcaRow)otraMarcaRow.style.display='none';return;}
+  if(otraMarcaRow)otraMarcaRow.style.display=marca==='Otra'?'block':'none';
+  (clGetMergedModelos()[marca]||['Otro']).forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);});
+  clCheckOtroModelo();
+}
+window.clCheckOtroModelo=function(){document.getElementById('cl-otro-row').style.display=document.getElementById('cl-modelo').value==='Otro'?'block':'none';}
+
+function clSetFuelVal(n){clFst.combustible=n;for(let i=1;i<=4;i++){const el=document.getElementById('cl-fuel-'+i);if(el)el.classList.toggle('on',i<=n);}}
+window.clSetFuel=function(n){clSetFuelVal(n);clAutoSave();}
+function clSetPBVal(val){clFst.parabrisas=val;['OK','Trizado','Picado'].forEach(v=>{const el=document.getElementById('cl-pb-'+v);if(el)el.className='cl-tog-opt'+(v===val?' info':'');});}
+window.clSetPB=function(val){clSetPBVal(val);clAutoSave();}
+function clSetTapizVal(val){clFst.tapiz=val;const ok=document.getElementById('cl-tapiz-OK');const su=document.getElementById('cl-tapiz-Sucio');if(ok)ok.className='cl-tog-opt'+(val==='OK'?' ok':'');if(su)su.className='cl-tog-opt'+(val==='Sucio'?' warn':'');}
+window.clSetTapiz=function(val){clSetTapizVal(val);clAutoSave();}
+
+function clRenderAccGrid(){
+  const g=document.getElementById('cl-acc-grid');if(!g)return;g.innerHTML='';
+  CL_ACCESORIOS.forEach(a=>{
+    if(a.tipo==='qty'){
+      const row=document.createElement('div');row.className='cl-qty-row';
+      row.innerHTML=`<span class="cl-qty-label">${a.key}</span><div class="cl-qty-ctrl"><button class="cl-qty-btn" onclick="clChangeQty('${a.key}',-1)">−</button><span class="cl-qty-val" id="cl-qty-${a.key}">${clFst.accesoriosQty[a.key]||0}</span><button class="cl-qty-btn" onclick="clChangeQty('${a.key}',1)">+</button></div>`;
+      g.appendChild(row);
+    }else{
+      const wrap=document.createElement('div');
+      const lbl=document.createElement('label');lbl.className='cl-check-item'+(clFst.accesorios[a.key]?' on':'');
+      lbl.innerHTML=`<input type="checkbox" ${clFst.accesorios[a.key]?'checked':''}> ${a.key}`;
+      lbl.querySelector('input').onchange=e=>{clFst.accesorios[a.key]=e.target.checked;lbl.classList.toggle('on',e.target.checked);clAutoSave();};
+      wrap.appendChild(lbl);g.appendChild(wrap);
+    }
+  });
+}
+window.clChangeQty=function(key,delta){
+  clFst.accesoriosQty[key]=Math.max(0,(clFst.accesoriosQty[key]||0)+delta);
+  const el=document.getElementById('cl-qty-'+key);if(el)el.textContent=clFst.accesoriosQty[key];clAutoSave();
+}
+function clRenderWorking(){
+  const area=document.getElementById('cl-trabajos-tags');if(!area)return;area.innerHTML='';
+  clFst.trabajos.forEach((t,i)=>{const tag=document.createElement('span');tag.className='cl-tag';tag.innerHTML=`${t} <button onclick="clRemoveTrabajo(${i})">×</button>`;area.appendChild(tag);});
+}
+function clRenderReps(){
+  const area=document.getElementById('cl-rep-tags');if(!area)return;area.innerHTML='';
+  clFst.repuestos.forEach((r,i)=>{const tag=document.createElement('span');tag.className='cl-tag';tag.innerHTML=`${r} <button onclick="clRemoveRepuesto(${i})">×</button>`;area.appendChild(tag);});
+}
+window.clAddTrabajo=function(){const inp=document.getElementById('cl-trab-input');const v=inp.value.trim();if(v&&!clFst.trabajos.includes(v)){clFst.trabajos.push(v);clRenderWorking();clAutoSave();}inp.value='';}
+window.clRemoveTrabajo=function(i){clFst.trabajos.splice(i,1);clRenderWorking();clAutoSave();}
+window.clAddRepuesto=function(){const inp=document.getElementById('cl-rep-input');const v=inp.value.trim();if(v&&!clFst.repuestos.includes(v)){clFst.repuestos.push(v);clRenderReps();clAutoSave();}inp.value='';}
+window.clRemoveRepuesto=function(i){clFst.repuestos.splice(i,1);clRenderReps();clAutoSave();}
+
+function clRenderSummary(){
+  const el=document.getElementById('cl-summary');if(!el)return;
+  const marcaVal=document.getElementById('cl-marca')?.value||'';
+  const marca=marcaVal==='Otra'?(document.getElementById('cl-otra-marca')?.value||''):marcaVal;
+  const modeloVal=document.getElementById('cl-modelo')?.value||'';
+  const modelo=modeloVal==='Otro'?(document.getElementById('cl-otro-modelo')?.value||''):modeloVal;
+  const anio=document.getElementById('cl-anio')?.value||'';
+  const km=document.getElementById('cl-km')?.value||'';
+  const obs=document.getElementById('cl-obs')?.value||'';
+  const accsCheck=Object.entries(clFst.accesorios).filter(([,v])=>v).map(([k])=>k);
+  const accsQty=Object.entries(clFst.accesoriosQty).filter(([,v])=>v>0).map(([k,v])=>k+': '+v);
+  el.innerHTML=`
+    <div class="cl-summary-card">
+      <div class="cl-sum-title">Vehículo</div>
+      <div class="cl-sum-row"><span>Patente</span><span>${clCurrentPatente||'—'}</span></div>
+      <div class="cl-sum-row"><span>Marca / Modelo</span><span>${[marca,modelo,anio].filter(Boolean).join(' ')||'—'}</span></div>
+      <div class="cl-sum-row"><span>KM</span><span>${km?parseInt(km).toLocaleString('es-CL')+'  km':'—'}</span></div>
+      <div class="cl-sum-row"><span>Combustible</span><span>${clFst.combustible?clFst.combustible+'/4':'—'}</span></div>
+      <div class="cl-sum-row"><span>Parabrisas</span><span>${clFst.parabrisas||'—'}</span></div>
+      <div class="cl-sum-row"><span>Tapiz</span><span>${clFst.tapiz||'—'}</span></div>
+    </div>
+    <div class="cl-summary-card">
+      <div class="cl-sum-title">Accesorios</div>
+      <div style="font-size:13px;color:var(--text2)">${[...accsCheck,...accsQty].join(' · ')||'Ninguno'}</div>
+    </div>
+    ${clFst.trabajos.length?`<div class="cl-summary-card"><div class="cl-sum-title">Trabajos</div><div class="tag-wrap">${clFst.trabajos.map(t=>`<span class="rc-tag trabajo">${t}</span>`).join('')}</div></div>`:''}
+    ${clFst.repuestos.length?`<div class="cl-summary-card"><div class="cl-sum-title">Repuestos</div><div class="tag-wrap">${clFst.repuestos.map(r=>`<span class="rc-tag">${r}</span>`).join('')}</div></div>`:''}
+    ${obs?`<div class="cl-summary-card"><div class="cl-sum-title">Observaciones</div><div style="font-size:13px;color:var(--text2)">${obs}</div></div>`:''}
+  `;
+}
+
+window.generarExcelInline=async function(){
+  const pat=clCurrentPatente;const v=pat?supavehiculos[pat]:null;if(!v)return;
+  const btn=document.getElementById('pd-btn-excel');
+  if(btn){btn.textContent='Generando...';btn.disabled=true;}
+  try{
+    const res=await fetch('https://excel-server-dbt.onrender.com/generar-excel',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({patente:v.patente||'',marca:v.marca||'',modelo:v.modelo||'',anio:v.anio||null,km:v.km||null,combustible:v.combustible||null,trabajos:v.trabajos||[],repuestos:v.repuestos||[],observaciones:v.observaciones||''})
+    });
+    if(!res.ok)throw new Error('Error servidor: '+res.status);
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');
+    a.href=url;a.download=`${pat}GAMA.xlsx`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    showToast('Excel descargado','ok');
+    cambiarEstadoPresup('Presupuesto enviado');
+  }catch(e){showToast('Error: '+(e.message||'no se pudo conectar'),'err');}
+  if(btn){btn.textContent='Descargar Excel';btn.disabled=false;}
+}
+
 window.showTaller = async function(taller){
-  document.getElementById('homeView').style.display='none';
-  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin'].forEach(id=>document.getElementById(id).classList.remove('active'));
-  document.getElementById('panelTaller').classList.add('active');
+  activarPanel('panelTaller');
   const titles = {PINTURA:'Pintura',RILDO:'Rildo',TERMINACION:'Terminación',TODOS:'Todos en taller'};
   document.getElementById('tallerPanelTitle').textContent = titles[taller]||taller;
   const cont = document.getElementById('tallerList');
@@ -1212,9 +1751,7 @@ if(saved){ currentUser=JSON.parse(saved); startApp(); }
 // Admin panel functions
 window.showAdminPanel = async function(){
   if(!isAdmin) return;
-  document.getElementById('homeView').style.display='none';
-  ['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin'].forEach(id=>document.getElementById(id).classList.remove('active'));
-  document.getElementById('panelAdmin').classList.add('active');
+  activarPanel('panelAdmin');
   await loadUsersPanel();
 }
 
