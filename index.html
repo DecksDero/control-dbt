@@ -212,6 +212,19 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
 .hist-bar-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
 .hist-bar{height:6px;border-radius:3px;background:var(--blue);transition:width .4s}
 
+/* PRESUPUESTO DETAIL IN SEARCH / PANEL */
+.rc-veh-info{font-size:13px;color:var(--text2);font-weight:500;padding:6px 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.rc-presup-section{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.rc-presup-section.open{display:block}
+.rc-sub-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 5px}
+.rc-sub-label:first-child{margin-top:0}
+.tag-wrap{display:flex;flex-wrap:wrap;gap:5px}
+.rc-tag{display:inline-flex;padding:3px 10px;border-radius:20px;font-size:12px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2)}
+.rc-tag.trabajo{border-color:var(--blue-text);background:var(--blue-bg);color:var(--blue-text)}
+.rc-expand-btn{width:100%;padding:7px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;font-size:12px;font-weight:500;cursor:pointer;color:var(--text2);margin-top:8px;transition:background .12s}
+.rc-expand-btn:hover{background:var(--surface2)}
+.presup-obs{font-size:12px;color:var(--text2);background:var(--surface2);padding:8px 10px;border-radius:var(--radius-sm);line-height:1.5;margin-top:6px}
+
 /* RESPONSIVE DESKTOP ≥ 1024px */
 @media (min-width:1024px){
   html,body{overflow:hidden}
@@ -400,6 +413,7 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
       <button class="back-btn" onclick="closePanel()">← Volver</button>
       <h2>Estado de presupuestos</h2>
     </div>
+    <button class="big-btn btn-dark" onclick="window.open('../Presupuestos/index.html','_blank')" style="margin-bottom:14px;padding:10px;font-size:13px">Abrir app de Presupuestos →</button>
     <div id="pendientesList"></div>
   </div>
 
@@ -528,8 +542,6 @@ onSnapshot(collection(db, 'vehiculos'), snap => {
     const data = d.data();
     if(data.patente) fbVehiculos[data.patente.toUpperCase()] = data;
   });
-  const panel = document.getElementById('panelPendientes');
-  if(panel.classList.contains('active')) renderPendientes();
 });
 
 function getPresupuestoStatus(patente) {
@@ -562,6 +574,17 @@ function td(s){if(!s)return'—';const[y,m,d]=s.split('-');return d+'-'+m+'-'+y.
 function tallerBadge(t){const m={PINTURA:['b-pintura','Pintura'],RILDO:['b-rildo','Rildo'],TERMINACION:['b-terminacion','Terminación'],NA:['b-na','N/A']};const v=m[t]||['b-na',t];return`<span class="badge ${v[0]}">${v[1]}</span>`;}
 function today(){return new Date().toISOString().slice(0,10);}
 function obsLabel(obs){if(!obs)return null;if(obs.includes('||'))return obs.split('||')[0].trim();return obs;}
+function parseChecklist(obs){if(!obs||!obs.includes('||'))return null;try{return JSON.parse(obs.split('||')[1]);}catch(e){return null;}}
+function estadoFromObs(obs){
+  if(!obs)return null;
+  if(obs.includes('||'))return obs.split('||')[0].trim();
+  const o=obs.toLowerCase();
+  if(o.includes('enviado'))return'Presupuesto enviado';
+  if(o.includes('terminado'))return'Presupuesto terminado';
+  if(o.includes('con datos')||o.includes('datos'))return'Con datos';
+  if(o.includes('pendiente'))return'Pendiente de datos';
+  return obs;
+}
 function diasEnTaller(ingreso,salida){if(!ingreso)return null;const end=salida?new Date(salida):new Date();const start=new Date(ingreso);return Math.max(0,Math.floor((end-start)/(1000*60*60*24)));}
 
 function showToast(msg, type='ok'){
@@ -680,6 +703,7 @@ function subscribeRealtime(){
       loadStats();
       const panel=document.querySelector('.panel.active');
       if(panel&&panel.id==='panelSalida') renderSalidaList(document.getElementById('salidaSearch').value.trim());
+      if(panel&&panel.id==='panelPendientes') renderPendientes();
     })
     .subscribe();
 }
@@ -728,20 +752,35 @@ window.doSearch = async function(){
   cont.innerHTML='<div class="loading">Buscando...</div>';
   const {data}=await sb.from('vehiculos').select('*').ilike('patente','%'+q+'%').order('id',{ascending:false}).limit(10);
   if(!data||!data.length){cont.innerHTML='<div class="empty">Sin resultados para "'+q+'"</div>';return;}
-  cont.innerHTML=data.map(v=>`
+  cont.innerHTML=data.map(v=>{
+    const cl=parseChecklist(v.obs);
+    const vehInfo=cl?[cl.marca,cl.modelo,cl.anio].filter(Boolean).join(' '):'';
+    const trabajos=cl?.trabajos||[];
+    const repuestos=cl?.repuestos||[];
+    const tienePresup=trabajos.length||repuestos.length;
+    const estadoPresup=estadoFromObs(v.obs);
+    const escHtml=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `
     <div class="result-card">
       <div class="rc-top">
         <span class="rc-pat">${v.patente}</span>
         ${v.salida?'<span class="badge b-salida">Retirado</span>':'<span class="badge b-activo">En taller</span>'}
       </div>
+      ${vehInfo?`<div class="rc-veh-info">${escHtml(vehInfo)}</div>`:''}
       <div class="rc-rows">
         <div class="rc-row"><span>Taller</span>${tallerBadge(v.taller)}</div>
         <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
         ${v.salida?`<div class="rc-row"><span>Salida</span><span>${td(v.salida)}</span></div>`:''}
         <div class="rc-row"><span>Días en taller</span><span style="font-weight:600;color:${v.salida?'var(--text2)':'var(--blue)'}">${diasEnTaller(v.ingreso,v.salida)} días</span></div>
-        ${obsLabel(v.obs)?`<div class="rc-row"><span>Estado</span><span>${obsLabel(v.obs)}</span></div>`:''}
+        ${estadoPresup?`<div class="rc-row"><span>Estado presup.</span><span>${escHtml(estadoPresup)}</span></div>`:''}
       </div>
-      ${presupuestoBadge(v.patente)}
+      ${tienePresup?`
+      <button class="rc-expand-btn" onclick="togglePresupDetalle(this,'srch-${v.id}')">Ver presupuesto ▾</button>
+      <div class="rc-presup-section" id="srch-${v.id}">
+        ${trabajos.length?`<div class="rc-sub-label">Trabajos</div><div class="tag-wrap">${trabajos.map(t=>`<span class="rc-tag trabajo">${escHtml(t)}</span>`).join('')}</div>`:''}
+        ${repuestos.length?`<div class="rc-sub-label">Repuestos</div><div class="tag-wrap">${repuestos.map(r=>`<span class="rc-tag">${escHtml(r)}</span>`).join('')}</div>`:''}
+        ${cl?.observaciones?`<div class="rc-sub-label">Observaciones</div><div class="presup-obs">${escHtml(cl.observaciones)}</div>`:''}
+      </div>`:''}
       ${!v.salida && window.canChangeTaller ? `
         <div class="rc-actions">
           <button class="rc-act-btn blue" onclick="toggleCambioTaller(${v.id})">Cambiar taller</button>
@@ -759,8 +798,15 @@ window.doSearch = async function(){
             <button class="big-btn btn-blue" onclick="cambiarTaller(${v.id},'${v.patente}')">Confirmar cambio</button>
           </div>
         </div>` : ''}
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+}
+
+window.togglePresupDetalle = function(btn, detailId){
+  const detail=document.getElementById(detailId);
+  if(!detail)return;
+  const isOpen=detail.classList.toggle('open');
+  btn.textContent=isOpen?'Ocultar presupuesto ▴':'Ver presupuesto ▾';
 }
 
 window.toggleCambioTaller = function(id){
@@ -844,39 +890,49 @@ window.confirmSalida = async function(id, pat){
   loadStats();
 }
 
-function renderPendientes(){
+async function renderPendientes(){
   const cont=document.getElementById('pendientesList');
-  const vehList = Object.values(fbVehiculos)
-    .filter(v => v.estado && v.estado !== 'Entregado')
-    .sort((a,b) => (b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
-
-  if(!vehList.length){
+  cont.innerHTML='<div class="loading">Cargando...</div>';
+  const {data}=await sb.from('vehiculos').select('*').is('salida',null).order('ingreso',{ascending:true});
+  if(!data||!data.length){
     cont.innerHTML='<div class="empty">No hay presupuestos activos en este momento.</div>';
     return;
   }
-
-  const statusMap = {
-    'Ingresado': {cls:'presup-pendiente', label:'Sin presupuesto'},
-    'Datos tomados': {cls:'presup-con-datos', label:'Con datos'},
-    'Presupuesto en curso': {cls:'presup-con-datos', label:'Presupuesto en curso'},
-    'Enviado': {cls:'presup-enviado', label:'Presupuesto enviado'},
-    'En reparación': {cls:'presup-enviado', label:'En reparación'},
-    'Listo': {cls:'presup-enviado', label:'Listo para entrega'},
+  const statusStyles={
+    'Pendiente de datos':{cls:'presup-pendiente',label:'Sin datos'},
+    'Con datos':{cls:'presup-con-datos',label:'Con datos'},
+    'Presupuesto terminado':{cls:'presup-con-datos',label:'Presupuesto listo'},
+    'Presupuesto enviado':{cls:'presup-enviado',label:'Presupuesto enviado'},
   };
-
-  cont.innerHTML = vehList.map(v => {
-    const sm = statusMap[v.estado] || {cls:'presup-pendiente', label:v.estado};
+  const escHtml=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  cont.innerHTML=data.map(v=>{
+    const cl=parseChecklist(v.obs);
+    const estado=estadoFromObs(v.obs)||'Pendiente de datos';
+    const ss=statusStyles[estado]||{cls:'presup-pendiente',label:estado};
+    const vehInfo=cl?[cl.marca,cl.modelo,cl.anio].filter(Boolean).join(' '):'';
+    const trabajos=cl?.trabajos||[];
+    const repuestos=cl?.repuestos||[];
+    const tienePresup=trabajos.length||repuestos.length;
     return `
       <div class="result-card">
         <div class="rc-top">
-          <span class="rc-pat">${(v.patente||'—').toUpperCase()}</span>
-          <span class="badge ${v.taller==='PINTURA'?'b-pintura':v.taller==='RILDO'?'b-rildo':v.taller==='TERMINACION'?'b-terminacion':'b-na'}">${v.taller||'—'}</span>
+          <span class="rc-pat">${v.patente}</span>
+          ${tallerBadge(v.taller)}
         </div>
+        ${vehInfo?`<div class="rc-veh-info">${escHtml(vehInfo)}</div>`:''}
         <div class="rc-rows">
-          <div class="rc-row"><span>Vehículo</span><span>${[v.marca,v.modelo,v.anio].filter(Boolean).join(' ')||'—'}</span></div>
-          <div class="rc-row"><span>KM</span><span>${v.km?Number(v.km).toLocaleString('es-CL')+' km':'—'}</span></div>
+          <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
+          <div class="rc-row"><span>Días</span><span style="font-weight:600;color:var(--blue)">${diasEnTaller(v.ingreso,null)} días</span></div>
+          ${cl?.km?`<div class="rc-row"><span>KM</span><span>${Number(cl.km).toLocaleString('es-CL')} km</span></div>`:''}
         </div>
-        <div class="presup-badge ${sm.cls}"><span class="presup-dot"></span>${sm.label}</div>
+        <div class="presup-badge ${ss.cls}"><span class="presup-dot"></span>${ss.label}</div>
+        ${tienePresup?`
+        <button class="rc-expand-btn" onclick="togglePresupDetalle(this,'pend-${v.id}')">Ver presupuesto ▾</button>
+        <div class="rc-presup-section" id="pend-${v.id}">
+          ${trabajos.length?`<div class="rc-sub-label">Trabajos</div><div class="tag-wrap">${trabajos.map(t=>`<span class="rc-tag trabajo">${escHtml(t)}</span>`).join('')}</div>`:''}
+          ${repuestos.length?`<div class="rc-sub-label">Repuestos</div><div class="tag-wrap">${repuestos.map(r=>`<span class="rc-tag">${escHtml(r)}</span>`).join('')}</div>`:''}
+          ${cl?.observaciones?`<div class="rc-sub-label">Observaciones</div><div class="presup-obs">${escHtml(cl.observaciones)}</div>`:''}
+        </div>`:''}
       </div>`;
   }).join('');
 }
