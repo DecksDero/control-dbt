@@ -1322,6 +1322,18 @@ window.clNextStep=async function(){
 }
 window.clPrevStep=function(){if(clStep>0)clGoStep(clStep-1);}
 
+function clBuildObs(){
+  const parts=[];
+  if(clFst.parabrisas&&clFst.parabrisas!=='OK') parts.push('Parabrisas '+clFst.parabrisas.toLowerCase()+'.');
+  if(clFst.tapiz==='Sucio') parts.push('Tapiz sucio.');
+  const p=clFst.accesoriosQty?.['Pisos']||0; if(p) parts.push('Pisos: '+p+'.');
+  const pa=clFst.accesoriosQty?.['Patentes']||0; if(pa) parts.push('Patentes: '+pa+'.');
+  const faltantes=CL_ACCESORIOS.filter(a=>a.tipo==='check'&&!clFst.accesorios?.[a.key]).map(a=>a.key);
+  if(faltantes.length) parts.push('Faltante: '+faltantes.join(', ')+'.');
+  const obsText=document.getElementById('cl-obs')?.value||''; if(obsText) parts.push(obsText);
+  return parts.join(' ');
+}
+
 async function clSaveChecklist(){
   const pat=clCurrentPatente;if(!pat){showToast('Error: no hay patente','err');return false;}
   const marcaVal=document.getElementById('cl-marca').value;
@@ -1330,13 +1342,12 @@ async function clSaveChecklist(){
   const modelo=modeloVal==='Otro'?(document.getElementById('cl-otro-modelo')?.value||'Otro'):modeloVal;
   const anio=document.getElementById('cl-anio').value;
   const km=document.getElementById('cl-km').value;
-  const obs=document.getElementById('cl-obs').value.trim();
   const estado=(clFst.trabajos?.length||clFst.repuestos?.length)?'Presupuesto terminado':'Con datos';
   const checklist={
     marca:marca||'',modelo:modelo||'',anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
     combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',
     accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
-    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:obs||''
+    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:clBuildObs()||''
   };
   const obsValue=estado+'||'+JSON.stringify(checklist);
   try{
@@ -1357,13 +1368,12 @@ function clAutoSave(){
   const modelo=modeloVal==='Otro'?(document.getElementById('cl-otro-modelo')?.value||''):modeloVal;
   const anio=document.getElementById('cl-anio')?.value||'';
   const km=document.getElementById('cl-km')?.value||'';
-  const obs=document.getElementById('cl-obs')?.value||'';
   const currentEstado=supavehiculos[pat]?.estado||'Pendiente de datos';
   const checklist={
     marca,modelo,anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
     combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',
     accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
-    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:obs
+    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:clBuildObs()
   };
   const obsValue=currentEstado+'||'+JSON.stringify(checklist);
   clearTimeout(clAutoSave._timer);
