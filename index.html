@@ -668,6 +668,10 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
     <div id="users-list"></div>
   </div>
 
+  <div class="panel" id="panelRepuestos" style="padding:0">
+    <iframe src="../Repuestos/repuestos.html" id="repuestosFrame" style="width:100%;height:100%;border:none;display:block"></iframe>
+  </div>
+
   <div class="bottom-nav">
     <div class="sidebar-brand" style="display:none;align-items:center;gap:10px;padding:4px 4px 16px;border-bottom:1px solid var(--border);margin-bottom:8px;width:100%">
       <div class="topbar-logo"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
@@ -687,6 +691,10 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
     <button class="bnav-btn" id="bnav-pendientes" onclick="showPanel('pendientes')">
       <svg class="bnav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       Presupuestos
+    </button>
+    <button class="bnav-btn" id="bnav-repuestos" onclick="showPanel('repuestos')">
+      <svg class="bnav-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      Repuestos
     </button>
     <button class="bnav-btn" id="bnav-estadisticas" onclick="showPanel('estadisticas')" style="display:none">
       <svg class="bnav-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -782,7 +790,7 @@ let presupTab='pendiente';
 let clCurrentPatente=null;
 let clStep=0;
 let clFst={combustible:0,parabrisas:'',tapiz:'',trabajos:[],repuestos:[],accesorios:{},accesoriosQty:{}};
-const ALL_PANELS=['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin','panelPresupDetalle','panelChecklist'];
+const ALL_PANELS=['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin','panelPresupDetalle','panelChecklist','panelRepuestos'];
 
 function activarPanel(id){
   document.getElementById('homeView').style.display='none';
@@ -998,6 +1006,7 @@ window.showPanel = function(name){
   if(name==='pendientes'){document.getElementById('bnav-pendientes').classList.add('active');renderPendientes();}
   if(name==='reporte'){renderReportePreview();}
   if(name==='estadisticas'){document.getElementById('bnav-estadisticas').classList.add('active');statsData=null;renderEstadisticas();}
+  if(name==='repuestos'){document.getElementById('bnav-repuestos').classList.add('active');}
 }
 
 window.goHome = function(){
