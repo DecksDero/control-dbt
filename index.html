@@ -1292,9 +1292,17 @@ window.cambiarEstadoPresup=async function(estado){
   const pat=clCurrentPatente;const v=supavehiculos[pat];if(!v)return;
   const obsValue=v.obs&&v.obs.includes('||')?estado+'||'+v.obs.split('||')[1]:estado;
   try{
-    const{error}=await sb.from('vehiculos').update({obs:obsValue}).eq('patente',pat);
+    const updateData={obs:obsValue};
+    if(estado==='Presupuesto enviado'&&!v.fecha_rep_pendiente){
+      updateData.fecha_rep_pendiente=today();
+    }
+    const{error}=await sb.from('vehiculos').update(updateData).eq('patente',pat);
     if(error)throw error;
     supavehiculos[pat].obs=obsValue;supavehiculos[pat].estado=estado;
+    if(updateData.fecha_rep_pendiente){
+      supavehiculos[pat].fecha_rep_pendiente=updateData.fecha_rep_pendiente;
+      statsData=null;
+    }
     document.getElementById('pd-status-row').querySelectorAll('.status-btn-inline').forEach((b,i)=>{
       b.classList.toggle('active',['Pendiente de datos','Con datos','Presupuesto terminado','Presupuesto enviado'][i]===estado);
     });
@@ -1554,19 +1562,10 @@ window.showTaller = async function(taller){
         ${obsLabel(v.obs)?`<div class="rc-row"><span>Estado presup.</span><span>${obsLabel(v.obs)}</span></div>`:''}
         ${repStatusHTML(v)}
       </div>
-      <div class="rc-actions">
-        ${!v.fecha_rep_pendiente?`<button class="rc-act-btn" onclick="marcarRepPendiente(${v.id})">Repuestos pendientes</button>`:''}
-        ${v.fecha_rep_pendiente&&!v.fecha_rep_recibido?`<button class="rc-act-btn blue" onclick="showRepRecibidoBox(${v.id},'${v.patente}')">Repuestos recibidos</button>`:''}
-      </div>
+      ${v.fecha_rep_pendiente&&!v.fecha_rep_recibido?`<div class="rc-actions"><button class="rc-act-btn blue" onclick="showRepRecibidoBox(${v.id},'${v.patente}')">Repuestos recibidos</button></div>`:''}
+      ${v.fecha_rep_recibido?`<div class="rc-actions" style="opacity:.5;font-size:12px;justify-content:center;color:var(--text3)">Repuestos completados</div>`:''}
     </div>
   `).join('');
-}
-
-window.marcarRepPendiente = async function(id){
-  const{error}=await sb.from('vehiculos').update({fecha_rep_pendiente:today()}).eq('id',id);
-  if(error){showToast('Error al guardar','err');return;}
-  showToast('Repuestos marcados como pendientes','ok');
-  showTaller(currentTaller);
 }
 
 window.showRepRecibidoBox = function(id, pat){
