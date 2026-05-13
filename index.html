@@ -1170,15 +1170,13 @@ window.selectSalida = function(id,pat,taller){
   salidaSelectedId=id;
   renderSalidaList(document.getElementById('salidaSearch').value.trim());
   const v=salidaVehiculos[id]||{};
-  const hasPendRep=v.fecha_rep_pendiente&&!v.fecha_rep_recibido;
+  const hasPendRep=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido);
+  const aviso=hasPendRep?`<div style="background:var(--amber-bg);color:var(--amber-text);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px;font-weight:600;margin-top:10px;margin-bottom:10px">⚠ Sale con repuestos pendientes</div>`:'';
   document.getElementById('salidaConfirm').innerHTML=`
     <div class="confirm-box">
       <p>Confirmar salida de <strong>${pat}</strong> (${taller==='TERMINACION'?'Terminación':taller.charAt(0)+taller.slice(1).toLowerCase()})</p>
       <div class="frow"><label>Fecha de salida</label><input type="date" id="salidaFecha" value="${today()}"/></div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-top:10px;margin-bottom:10px;cursor:pointer">
-        <input type="checkbox" id="salidaPendientes" style="width:16px;height:16px" ${hasPendRep?'checked':''}>
-        Sale con repuestos pendientes
-      </label>
+      ${aviso}
       <button class="big-btn btn-red" onclick="confirmSalida(${id},'${pat}')">Confirmar salida</button>
     </div>
   `;
@@ -1188,10 +1186,11 @@ window.selectSalida = function(id,pat,taller){
 window.confirmSalida = async function(id, pat){
   const fecha=document.getElementById('salidaFecha').value;
   if(!fecha){showToast('Selecciona una fecha','err');return;}
-  const conPendientes=document.getElementById('salidaPendientes')?.checked||false;
+  const v=salidaVehiculos[id]||{};
+  const conPendientes=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido);
   const{error}=await sb.from('vehiculos').update({salida:fecha,taller:'NA',salida_pendientes:conPendientes}).eq('id',id);
   if(error){showToast('Error al guardar','err');return;}
-  showToast('Salida de '+pat+(conPendientes?' (con rep. pendientes)':'')+' registrada','ok');
+  showToast('Salida de '+pat+(conPendientes?' · con rep. pendientes':'')+' registrada','ok');
   statsData=null;
   salidaSelectedId=null;
   document.getElementById('salidaConfirm').innerHTML='';
