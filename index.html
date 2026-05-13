@@ -1520,6 +1520,19 @@ function clRenderSummary(){
   `;
 }
 
+async function autoCrearPedidosRepuestos(patente, repuestosList){
+  if(!repuestosList||!repuestosList.length) return 0;
+  try{
+    const {data:existing}=await sb.from('pedidos').select('repuesto').eq('patente',patente).eq('estado','Solicitado');
+    const existingSet=new Set((existing||[]).map(p=>p.repuesto.toLowerCase().trim()));
+    const nuevos=repuestosList.filter(r=>!existingSet.has(r.toLowerCase().trim()));
+    if(!nuevos.length) return 0;
+    const fecha=today();
+    await sb.from('pedidos').insert(nuevos.map(rep=>({patente,repuesto:rep,observacion:'Auto-generado desde Excel',fecha_solicitud:fecha,estado:'Solicitado'})));
+    return nuevos.length;
+  }catch(e){console.warn('pedidos auto:',e.message);return 0;}
+}
+
 window.generarExcelInline=async function(){
   const pat=clCurrentPatente;const v=pat?supavehiculos[pat]:null;if(!v)return;
   const btn=document.getElementById('pd-btn-excel');
@@ -1533,7 +1546,8 @@ window.generarExcelInline=async function(){
     const blob=await res.blob();
     const url=URL.createObjectURL(blob);const a=document.createElement('a');
     a.href=url;a.download=`${pat}GAMA.xlsx`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-    showToast('Excel descargado','ok');
+    const n=await autoCrearPedidosRepuestos(v.patente, v.repuestos||[]);
+    showToast('Excel descargado'+(n>0?` · ${n} pedido${n>1?'s':''} creado${n>1?'s':''} en repuestos`:''),'ok');
     cambiarEstadoPresup('Presupuesto enviado');
   }catch(e){showToast('Error: '+(e.message||'no se pudo conectar'),'err');}
   if(btn){btn.textContent='Descargar Excel';btn.disabled=false;}
