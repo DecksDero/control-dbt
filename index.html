@@ -980,7 +980,7 @@ async function startApp(){
 }
 
 async function loadStats(){
-  const {data}=await sb.from('vehiculos').select('taller,salida');
+  const {data}=await sb.from('vehiculos').select('taller,salida,perdida_total');
   if(!data) return;
   const active=data.filter(v=>!v.salida);
   const cnt={PINTURA:0,RILDO:0,TERMINACION:0};
@@ -1063,7 +1063,7 @@ window.doSearch = async function(){
     <div class="result-card">
       <div class="rc-top">
         <span class="rc-pat">${v.patente}</span>
-        ${v.salida?'<span class="badge b-salida">Retirado</span>':'<span class="badge b-activo">En taller</span>'}
+        ${v.perdida_total?'<span class="badge b-na">Pérdida total</span>':v.salida?'<span class="badge b-salida">Retirado</span>':'<span class="badge b-activo">En taller</span>'}
       </div>
       ${vehInfo?`<div class="rc-veh-info">${escHtml(vehInfo)}</div>`:''}
       <div class="rc-rows">
@@ -1178,6 +1178,7 @@ window.selectSalida = function(id,pat,taller){
       <div class="frow"><label>Fecha de salida</label><input type="date" id="salidaFecha" value="${today()}"/></div>
       ${aviso}
       <button class="big-btn btn-red" onclick="confirmSalida(${id},'${pat}')">Confirmar salida</button>
+      <button class="big-btn" style="margin-top:8px;background:var(--surface2);color:var(--text2);border:1px solid var(--border)" onclick="confirmPT(${id},'${pat}')">Registrar como pérdida total</button>
     </div>
   `;
   document.getElementById('salidaConfirm').scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -1191,6 +1192,19 @@ window.confirmSalida = async function(id, pat){
   const{error}=await sb.from('vehiculos').update({salida:fecha,taller:'NA',salida_pendientes:conPendientes}).eq('id',id);
   if(error){showToast('Error al guardar','err');return;}
   showToast('Salida de '+pat+(conPendientes?' · con rep. pendientes':'')+' registrada','ok');
+  statsData=null;
+  salidaSelectedId=null;
+  document.getElementById('salidaConfirm').innerHTML='';
+  renderSalidaList(document.getElementById('salidaSearch').value.trim());
+  loadStats();
+}
+
+window.confirmPT = async function(id, pat){
+  const fecha=document.getElementById('salidaFecha').value;
+  if(!fecha){showToast('Selecciona una fecha','err');return;}
+  const{error}=await sb.from('vehiculos').update({salida:fecha,taller:'NA',perdida_total:true}).eq('id',id);
+  if(error){showToast('Error al guardar','err');return;}
+  showToast(pat+' registrado como pérdida total','ok');
   statsData=null;
   salidaSelectedId=null;
   document.getElementById('salidaConfirm').innerHTML='';
@@ -1612,7 +1626,7 @@ async function renderEstadisticas(){
   if(!statsData){
     cont.innerHTML = '<div class="loading">Cargando estadísticas...</div>';
     try {
-      const {data, error} = await sb.from('vehiculos').select('taller,ingreso,salida,fecha_rep_pendiente,fecha_rep_recibido,rep_origen,salida_pendientes');
+      const {data, error} = await sb.from('vehiculos').select('taller,ingreso,salida,fecha_rep_pendiente,fecha_rep_recibido,rep_origen,salida_pendientes,perdida_total');
       if(error) throw error;
       statsData = data || [];
     } catch(e){
@@ -1626,7 +1640,8 @@ async function renderEstadisticas(){
 function renderEstadisticasVista(){
   const cont = document.getElementById('statsExtContent');
   const data = statsData;
-  const entregados = data.filter(v=>v.salida);
+  const perdidaTotalCount = data.filter(v=>v.perdida_total).length;
+  const entregados = data.filter(v=>v.salida&&!v.perdida_total);
   const enTaller   = data.filter(v=>!v.salida);
 
   // Totales
@@ -1740,6 +1755,10 @@ function renderEstadisticasVista(){
       <div class="stat-ext">
         <div class="stat-ext-val">${promDias}</div>
         <div class="stat-ext-lbl">Días prom. en taller</div>
+      </div>
+      <div class="stat-ext" style="grid-column:span 2;border-color:var(--red)">
+        <div class="stat-ext-val" style="color:var(--red)">${perdidaTotalCount}</div>
+        <div class="stat-ext-lbl">Pérdidas totales (no contadas como entregadas)</div>
       </div>
     </div>
 
