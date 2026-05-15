@@ -1120,8 +1120,12 @@ window.cambiarTaller = async function(id, pat){
   const {error}=await sb.from('vehiculos').update({taller:sel.value}).eq('id',id);
   if(error){showToast('Error al cambiar taller','err');return;}
   showToast(pat+' movido a '+sel.value,'ok');
-  document.getElementById('searchInput').dispatchEvent(new Event('input'));
   loadStats();
+  if(document.getElementById('panelTaller').classList.contains('active')){
+    showTaller(currentTaller);
+  } else {
+    document.getElementById('searchInput').dispatchEvent(new Event('input'));
+  }
 }
 
 window.saveIngreso = async function(){
@@ -1591,6 +1595,23 @@ window.showTaller = async function(taller){
       </div>
       ${v.fecha_rep_pendiente&&!v.fecha_rep_recibido?`<div class="rc-actions"><button class="rc-act-btn blue" onclick="showRepRecibidoBox(${v.id},'${v.patente}')">Repuestos recibidos</button></div>`:''}
       ${v.fecha_rep_recibido?`<div class="rc-actions" style="opacity:.5;font-size:12px;justify-content:center;color:var(--text3)">Repuestos completados</div>`:''}
+      ${window.canChangeTaller?`
+        <div class="rc-actions">
+          <button class="rc-act-btn blue" onclick="toggleCambioTaller(${v.id})">Cambiar taller</button>
+        </div>
+        <div id="cambio-${v.id}" style="display:none">
+          <div class="cambio-box">
+            <p>Nuevo taller para ${v.patente}:</p>
+            <div class="frow">
+              <select id="nuevoTaller-${v.id}">
+                <option value="PINTURA"${v.taller==='PINTURA'?' selected':''}>Pintura</option>
+                <option value="RILDO"${v.taller==='RILDO'?' selected':''}>Rildo</option>
+                <option value="TERMINACION"${v.taller==='TERMINACION'?' selected':''}>Terminación</option>
+              </select>
+            </div>
+            <button class="big-btn btn-blue" onclick="cambiarTaller(${v.id},'${v.patente}')">Confirmar cambio</button>
+          </div>
+        </div>`:''}
     </div>
   `).join('');
 }
