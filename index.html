@@ -628,6 +628,7 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
       <h2 id="tallerPanelTitle">Vehículos</h2>
     </div>
     <div id="tallerList"></div>
+    <div id="tallerListRetirados"></div>
   </div>
 
   <!-- PANEL REPORTE -->
@@ -1616,6 +1617,27 @@ window.showTaller = async function(taller){
         </div>`:''}
     </div>
   `).join('');
+
+  const contRet = document.getElementById('tallerListRetirados');
+  const {data: retirados} = await sb.from('vehiculos').select('*')
+    .not('salida', 'is', null)
+    .not('fecha_rep_pendiente', 'is', null)
+    .is('fecha_rep_recibido', null)
+    .order('salida', {ascending: false});
+  if (!retirados || !retirados.length) { contRet.innerHTML = ''; return; }
+  contRet.innerHTML = `<div style="margin-top:24px;padding-top:16px;border-top:2px solid var(--border1)">
+    <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px">Retirados · Repuestos llegaron después</div>
+    ${retirados.map(v=>`
+      <div class="result-card" data-vid-ret="${v.id}">
+        <div class="rc-top"><span class="rc-pat">${v.patente}</span><span class="badge b-salida">Retirado</span></div>
+        <div class="rc-rows">
+          <div class="rc-row"><span>Salida</span><span>${td(v.salida)}</span></div>
+        </div>
+        <div class="rc-actions">
+          <button class="rc-act-btn blue" onclick="confirmarRepRecibidoBodega(${v.id},'${v.patente}')">Repuestos llegaron → Bodega</button>
+        </div>
+      </div>`).join('')}
+  </div>`;
 }
 
 window.showRepRecibidoBox = function(id, pat){
@@ -1634,9 +1656,19 @@ window.showRepRecibidoBox = function(id, pat){
 }
 
 window.confirmarRepRecibido = async function(id, origen){
+  const{data:vCheck}=await sb.from('vehiculos').select('salida').eq('id',id).single();
+  if(vCheck?.salida) origen='bodega';
   const{error}=await sb.from('vehiculos').update({fecha_rep_recibido:today(),rep_origen:origen}).eq('id',id);
   if(error){showToast('Error al guardar','err');return;}
   showToast('Repuestos recibidos ('+(origen==='bodega'?'Bodega':'Proveedor')+')','ok');
+  statsData=null;
+  showTaller(currentTaller);
+}
+
+window.confirmarRepRecibidoBodega = async function(id, pat){
+  const{error}=await sb.from('vehiculos').update({fecha_rep_recibido:today(),rep_origen:'bodega'}).eq('id',id);
+  if(error){showToast('Error al guardar','err');return;}
+  showToast('Repuestos de '+pat+' registrados a Bodega','ok');
   statsData=null;
   showTaller(currentTaller);
 }
