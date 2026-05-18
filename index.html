@@ -1208,7 +1208,9 @@ window.confirmPT = async function(id, pat){
   if(!fecha){showToast('Selecciona una fecha','err');return;}
   const{error}=await sb.from('vehiculos').update({salida:fecha,taller:'NA',perdida_total:true}).eq('id',id);
   if(error){showToast('Error al guardar','err');return;}
-  showToast(pat+' registrado como pérdida total','ok');
+  const{data:pedBorrados}=await sb.from('pedidos').delete().eq('patente',pat).in('estado',['Solicitado','Incorrecto']).select();
+  const nb=pedBorrados?.length||0;
+  showToast(pat+' PT'+(nb>0?` · ${nb} rep. pendiente${nb>1?'s':''} eliminado${nb>1?'s':''}`:''),'ok');
   statsData=null;
   salidaSelectedId=null;
   document.getElementById('salidaConfirm').innerHTML='';
