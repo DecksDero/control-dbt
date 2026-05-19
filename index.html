@@ -1398,7 +1398,7 @@ function clBuildObs(){
   if(clFst.parabrisas&&clFst.parabrisas!=='OK') parts.push('Parabrisas '+clFst.parabrisas.toLowerCase()+'.');
   if(clFst.tapiz==='Sucio') parts.push('Tapiz sucio.');
   const p=clFst.accesoriosQty?.['Pisos']||0; if(p) parts.push('Pisos: '+p+'.');
-  const pa=clFst.accesoriosQty?.['Patentes']||0; if(pa) parts.push('Patentes: '+pa+'.');
+  const pa=clFst.accesoriosQty?.['Patentes']||0; if(pa) parts.push('Patentes: '+pa+'.'); else parts.push('Sin patentes.');
   const faltantes=CL_ACCESORIOS.filter(a=>a.tipo==='check'&&!clFst.accesorios?.[a.key]).map(a=>a.key);
   if(faltantes.length) parts.push('Faltante: '+faltantes.join(', ')+'.');
   const obsText=document.getElementById('cl-obs')?.value||''; if(obsText) parts.push(obsText);
