@@ -481,6 +481,10 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
     </div>
     <div class="frow"><label>Fecha de ingreso</label><input type="date" id="iIngreso"></div>
     <div class="frow"><label>Observaciones (opcional)</label><textarea id="iObs" placeholder="Notas adicionales..."></textarea></div>
+    <div class="frow" style="align-items:center">
+      <label>Llegó en grúa</label>
+      <button type="button" id="iGrua" data-v="0" onclick="toggleGrua()" style="padding:7px 18px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s">No</button>
+    </div>
     <button id="btnImport" onclick="showPanel('import')" style="display:none;width:100%;padding:10px;border:1px dashed var(--border2);border-radius:var(--radius-sm);background:transparent;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:14px">Importar datos históricos</button>
     <button class="big-btn btn-green" onclick="saveIngreso()">Registrar ingreso</button>
   </div>
@@ -1042,7 +1046,12 @@ window.showPanel = function(name){
     document.getElementById('searchResults').innerHTML='';
     setTimeout(()=>document.getElementById('searchInput').focus(),100);
   }
-  if(name==='ingreso'){document.getElementById('iPatente').value='';document.getElementById('iObs').value='';}
+  if(name==='ingreso'){
+    document.getElementById('iPatente').value='';
+    document.getElementById('iObs').value='';
+    const g=document.getElementById('iGrua');
+    if(g){g.dataset.v='0';g.textContent='No';g.style.background='';g.style.color='';g.style.borderColor='';}
+  }
   if(name==='salida'){document.getElementById('salidaSearch').value='';document.getElementById('salidaConfirm').innerHTML='';salidaSelectedId=null;renderSalidaList('');}
   if(name==='pendientes'){document.getElementById('bnav-pendientes').classList.add('active');renderPendientes();}
   if(name==='reporte'){renderReportePreview();}
@@ -1188,19 +1197,32 @@ window.cambiarTaller = async function(id, pat){
   }
 }
 
+window.toggleGrua = function(){
+  const b=document.getElementById('iGrua');
+  const on=b.dataset.v!=='1';
+  b.dataset.v=on?'1':'0';
+  b.textContent=on?'✓ Sí':'No';
+  b.style.background=on?'var(--amber-bg)':'var(--surface2)';
+  b.style.color=on?'var(--amber-text)':'var(--text2)';
+  b.style.borderColor=on?'var(--amber-text)':'var(--border)';
+}
+
 window.saveIngreso = async function(){
   const pat=document.getElementById('iPatente').value.trim().toUpperCase();
   const tal=document.getElementById('iTaller').value;
   const ing=document.getElementById('iIngreso').value;
   const obs=document.getElementById('iObs').value.trim();
+  const grua=document.getElementById('iGrua').dataset.v==='1';
   if(!pat||!ing){showToast('Patente y fecha son obligatorias','err');return;}
   const {data:exists}=await sb.from('vehiculos').select('id').eq('patente',pat).is('salida',null).maybeSingle();
   if(exists){showToast(pat+' ya está activo en taller','err');return;}
-  const {error}=await sb.from('vehiculos').insert({patente:pat,taller:tal,ingreso:ing,obs:obs||null});
+  const {error}=await sb.from('vehiculos').insert({patente:pat,taller:tal,ingreso:ing,obs:obs||null,grua:grua||null});
   if(error){showToast('Error al guardar','err');return;}
-  showToast(pat+' registrado en '+tal,'ok');
+  showToast(pat+' registrado en '+tal+(grua?' · en grúa':''),'ok');
   document.getElementById('iPatente').value='';
   document.getElementById('iObs').value='';
+  const g=document.getElementById('iGrua');
+  g.dataset.v='0';g.textContent='No';g.style.background='';g.style.color='';g.style.borderColor='';
   loadStats();
 }
 
@@ -1217,7 +1239,7 @@ async function renderSalidaList(q){
     <div class="sal-item${salidaSelectedId===v.id?' selected':''}" onclick="selectSalida(${v.id},'${v.patente}','${v.taller}')">
       <div class="sal-left">
         <div class="sal-pat">${v.patente}</div>
-        <div class="sal-sub">Ingresó: ${td(v.ingreso)}${v.fecha_rep_pendiente&&!v.fecha_rep_recibido?' · ⚠ Rep. pendientes':''}</div>
+        <div class="sal-sub">Ingresó: ${td(v.ingreso)}${v.grua?' · 🚛 Grúa':''}${v.fecha_rep_pendiente&&!v.fecha_rep_recibido?' · ⚠ Rep. pendientes':''}</div>
       </div>
       ${tallerBadge(v.taller)}
     </div>
@@ -1234,7 +1256,9 @@ window.selectSalida = function(id,pat,taller){
   salidaSelectedId=id;
   renderSalidaList(document.getElementById('salidaSearch').value.trim());
   const v=salidaVehiculos[id]||{};
-  const hasPendRep=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido);
+  const cl=parseChecklist(v.obs);
+  const tieneRepuestosChecklist=!!(cl?.repuestos?.length);
+  const hasPendRep=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido&&tieneRepuestosChecklist);
   const aviso=hasPendRep?`<div style="background:var(--amber-bg);color:var(--amber-text);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px;font-weight:600;margin-top:10px;margin-bottom:10px">⚠ Sale con repuestos pendientes</div>`:'';
   document.getElementById('salidaConfirm').innerHTML=`
     <div class="confirm-box">
@@ -1252,7 +1276,8 @@ window.confirmSalida = async function(id, pat){
   const fecha=document.getElementById('salidaFecha').value;
   if(!fecha){showToast('Selecciona una fecha','err');return;}
   const v=salidaVehiculos[id]||{};
-  const conPendientes=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido);
+  const clv=parseChecklist(v.obs);
+  const conPendientes=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido&&clv?.repuestos?.length);
   const{error}=await sb.from('vehiculos').update({salida:fecha,taller:'NA',salida_pendientes:conPendientes}).eq('id',id);
   if(error){showToast('Error al guardar','err');return;}
   showToast('Salida de '+pat+(conPendientes?' · con rep. pendientes':'')+' registrada','ok');
@@ -1647,7 +1672,7 @@ window.showTaller = async function(taller){
     <div class="result-card" data-vid="${v.id}">
       <div class="rc-top">
         <span class="rc-pat">${v.patente}</span>
-        ${tallerBadge(v.taller)}
+        <div style="display:flex;gap:6px;align-items:center">${v.grua?'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--amber-bg);color:var(--amber-text)">🚛 Grúa</span>':''}${tallerBadge(v.taller)}</div>
       </div>
       <div class="rc-rows">
         <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
