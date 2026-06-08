@@ -1449,16 +1449,18 @@ async function _guardarRepuestosActualizados(pat, v, nuevosRepuestos, marcadosNu
     const{error}=await sb.from('vehiculos').update(updateData).eq('patente',pat);
     if(error) throw error;
     for(const rep of marcadosNuestros){
-      await sb.from('pedidos').delete().eq('patente',pat).eq('repuesto',rep).in('estado',['Solicitado','Incorrecto']);
+      await sb.from('pedidos').delete().eq('patente',pat).filter('repuesto','ilike',rep).in('estado',['Solicitado','Incorrecto']);
     }
     supavehiculos[pat].repuestos=nuevosRepuestos;
     supavehiculos[pat].obs=newObs;
     if(limpiarFecha) supavehiculos[pat].fecha_rep_pendiente=null;
     abrirPresupDetalle(pat);
-    const msg=marcadosNuestros.length===1
-      ?`"${marcadosNuestros[0]}" marcado como nuestro`
-      :`${marcadosNuestros.length} repuestos marcados como nuestros${limpiarFecha?' · espera GAMA cancelada':''}`;
-    showToast(msg,'ok');
+    if(marcadosNuestros.length>0){
+      const msg=marcadosNuestros.length===1
+        ?`"${marcadosNuestros[0]}" marcado como nuestro`
+        :`${marcadosNuestros.length} repuestos marcados como nuestros${limpiarFecha?' · espera GAMA cancelada':''}`;
+      showToast(msg,'ok');
+    }
   }catch(e){showToast('Error al actualizar','err');}
 }
 
@@ -1480,7 +1482,11 @@ window.marcarTodosNuestros=async function(){
   const gamaNames=repuestos.filter(r=>r.origen==='GAMA').map(r=>r.nombre);
   if(!gamaNames.length)return;
   const nuevos=repuestos.map(r=>({nombre:r.nombre,origen:'nuestro'}));
-  await _guardarRepuestosActualizados(pat,v,nuevos,gamaNames);
+  // Cuando todos son nuestros, eliminar TODOS los pedidos activos de la patente (más seguro que match por nombre)
+  const{error:eAll}=await sb.from('pedidos').delete().eq('patente',pat).in('estado',['Solicitado','Incorrecto']);
+  if(eAll) showToast('Advertencia: no se pudieron limpiar pedidos GAMA','err');
+  await _guardarRepuestosActualizados(pat,v,nuevos,[]);
+  showToast(`${gamaNames.length} repuesto${gamaNames.length>1?'s':''} marcado${gamaNames.length>1?'s':''} como nuestros · pedidos GAMA eliminados`,'ok');
 }
 
 window.cambiarEstadoPresup=async function(estado){
