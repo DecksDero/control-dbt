@@ -601,6 +601,14 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
           <div class="cl-tog-opt" id="cl-tapiz-OK" onclick="clSetTapiz('OK')">OK</div>
           <div class="cl-tog-opt" id="cl-tapiz-Sucio" onclick="clSetTapiz('Sucio')">Sucio</div>
         </div>
+        <div class="cl-section-label">¿Enciende alguna luz en el tablero?</div>
+        <div class="cl-tog-row">
+          <div class="cl-tog-opt" id="cl-luces-No" onclick="clSetLuces('No')">No</div>
+          <div class="cl-tog-opt" id="cl-luces-Si" onclick="clSetLuces('Si')">Sí</div>
+        </div>
+        <div class="cl-field" id="cl-luces-texto-row" style="display:none;margin-top:6px">
+          <textarea id="cl-luces-texto" placeholder="Ej: ABS, Check Engine, temperatura..." oninput="clFst.luces=this.value;clAutoSave()" style="height:60px;line-height:1.5"></textarea>
+        </div>
       </div>
       <!-- PASO 2: Trabajos y repuestos -->
       <div class="cl-step" id="cl-sf-2">
@@ -823,7 +831,7 @@ let supavehiculos={};
 let presupTab='pendiente';
 let clCurrentPatente=null;
 let clStep=0;
-let clFst={combustible:0,parabrisas:'',tapiz:'',trabajos:[],repuestos:[],accesorios:{},accesoriosQty:{}};
+let clFst={combustible:0,parabrisas:'',tapiz:'',luces:'',trabajos:[],repuestos:[],accesorios:{},accesoriosQty:{}};
 const ALL_PANELS=['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin','panelPresupDetalle','panelChecklist','panelRepuestos','panelFecha'];
 
 function activarPanel(id){
@@ -870,7 +878,7 @@ async function loadSupavehiculos(){
     supavehiculos[pat]={
       ...v,patente:pat,estado:estadoFromObs(v.obs)||'Pendiente de datos',
       marca:cl?.marca||'',modelo:cl?.modelo||'',anio:cl?.anio||null,km:cl?.km||null,
-      combustible:cl?.combustible||0,parabrisas:cl?.parabrisas||'',tapiz:cl?.tapiz||'',
+      combustible:cl?.combustible||0,parabrisas:cl?.parabrisas||'',tapiz:cl?.tapiz||'',luces:cl?.luces||'',
       accesorios:cl?.accesorios||{},accesoriosQty:cl?.accesoriosQty||{},
       trabajos:cl?.trabajos||[],repuestos:cl?.repuestos||[],observaciones:cl?.observaciones||''
     };
@@ -882,6 +890,7 @@ function tallerBadge(t){const m={PINTURA:['b-pintura','Pintura'],RILDO:['b-rildo
 function today(){return new Date().toISOString().slice(0,10);}
 function obsLabel(obs){if(!obs)return null;if(obs.includes('||'))return obs.split('||')[0].trim();return obs;}
 function parseChecklist(obs){if(!obs||!obs.includes('||'))return null;try{return JSON.parse(obs.split('||')[1]);}catch(e){return null;}}
+function normRep(r){return typeof r==='string'?{nombre:r,origen:'GAMA'}:r;}
 function estadoFromObs(obs){
   if(!obs)return null;
   if(obs.includes('||'))return obs.split('||')[0].trim();
@@ -1114,7 +1123,7 @@ window.doSearch = async function(){
       <button class="rc-expand-btn" onclick="togglePresupDetalle(this,'srch-${v.id}')">Ver presupuesto ▾</button>
       <div class="rc-presup-section" id="srch-${v.id}">
         ${trabajos.length?`<div class="rc-sub-label">Trabajos</div><div class="tag-wrap">${trabajos.map(t=>`<span class="rc-tag trabajo">${escHtml(t)}</span>`).join('')}</div>`:''}
-        ${repuestos.length?`<div class="rc-sub-label">Repuestos</div><div class="tag-wrap">${repuestos.map(r=>`<span class="rc-tag">${escHtml(r)}</span>`).join('')}</div>`:''}
+        ${repuestos.length?`<div class="rc-sub-label">Repuestos</div><div class="tag-wrap">${repuestos.map(r=>{const nr=normRep(r);return`<span class="rc-tag" style="${nr.origen==='nuestro'?'opacity:.6;text-decoration:line-through':''}">${escHtml(nr.nombre)}<span style="margin-left:4px;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:${nr.origen==='nuestro'?'#3b82f6':'#f59e0b'};color:#fff;vertical-align:middle">${nr.origen==='nuestro'?'N':'G'}</span></span>`;}).join('')}</div>`:''}
         ${cl?.observaciones?`<div class="rc-sub-label">Observaciones</div><div class="presup-obs">${escHtml(cl.observaciones)}</div>`:''}
       </div>`:''}
       ${!v.salida && window.canChangeTaller ? `
@@ -1277,8 +1286,8 @@ window.selectSalida = function(id,pat,taller){
   renderSalidaList(document.getElementById('salidaSearch').value.trim());
   const v=salidaVehiculos[id]||{};
   const cl=parseChecklist(v.obs);
-  const tieneRepuestosChecklist=!!(cl?.repuestos?.length);
-  const hasPendRep=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido&&tieneRepuestosChecklist);
+  const gamaReps=(cl?.repuestos||[]).filter(r=>typeof r==='string'||r.origen==='GAMA');
+  const hasPendRep=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido&&gamaReps.length);
   const aviso=hasPendRep?`<div style="background:var(--amber-bg);color:var(--amber-text);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px;font-weight:600;margin-top:10px;margin-bottom:10px">⚠ Sale con repuestos pendientes</div>`:'';
   document.getElementById('salidaConfirm').innerHTML=`
     <div class="confirm-box">
@@ -1297,7 +1306,8 @@ window.confirmSalida = async function(id, pat){
   if(!fecha){showToast('Selecciona una fecha','err');return;}
   const v=salidaVehiculos[id]||{};
   const clv=parseChecklist(v.obs);
-  const conPendientes=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido&&clv?.repuestos?.length);
+  const gamaConf=(clv?.repuestos||[]).filter(r=>typeof r==='string'||r.origen==='GAMA');
+  const conPendientes=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido&&gamaConf.length);
   const{error}=await sb.from('vehiculos').update({salida:fecha,taller:'NA',salida_pendientes:conPendientes}).eq('id',id);
   if(error){showToast('Error al guardar','err');return;}
   showToast('Salida de '+pat+(conPendientes?' · con rep. pendientes':'')+' registrada','ok');
@@ -1386,23 +1396,32 @@ window.abrirPresupDetalle=function(patente){
   document.getElementById('pd-status-row').innerHTML=ESTADOS_P.map(e=>`
     <button class="status-btn-inline ${v.estado===e?'active':''}" onclick="cambiarEstadoPresup('${e}')">${statusLabels[e]||e}</button>
   `).join('');
-  document.getElementById('pd-info-grid').innerHTML=[
+  const infoRows=[
     ['Taller',v.taller||'—'],['KM',v.km?Number(v.km).toLocaleString('es-CL')+' km':'—'],
     ['Combustible',v.combustible?v.combustible+'/4':'—'],['Parabrisas',v.parabrisas||'—'],
-    ['Tapiz',v.tapiz||'—'],['Ingreso',v.ingreso||'—'],
-  ].map(([l,val])=>`<div class="info-cell"><div class="info-cell-label">${l}</div><div class="info-cell-val">${val}</div></div>`).join('');
+    ['Tapiz',v.tapiz||'—'],
+  ];
+  if(v.luces) infoRows.push(['Luces tablero',v.luces]);
+  infoRows.push(['Ingreso',v.ingreso||'—']);
+  document.getElementById('pd-info-grid').innerHTML=infoRows.map(([l,val])=>`<div class="info-cell"><div class="info-cell-label">${l}</div><div class="info-cell-val">${val}</div></div>`).join('');
   const escHtml=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const repsec=document.getElementById('pd-reps-section');
-  const trabajos=v.trabajos||[];const repuestos=v.repuestos||[];
+  const trabajos=v.trabajos||[];const repuestos=(v.repuestos||[]).map(normRep);
   if(trabajos.length||repuestos.length){
     repsec.style.display='block';
     document.getElementById('pd-trabajos').innerHTML=trabajos.map(t=>`<span class="rc-tag trabajo">${escHtml(t)}</span>`).join('')||'<span style="color:var(--text3);font-size:13px">Ninguno</span>';
     const puedeEliminar=window.canWrite&&v.estado==='Presupuesto enviado';
+    const tieneGAMA=repuestos.some(r=>r.origen==='GAMA');
     document.getElementById('pd-repuestos').innerHTML=repuestos.length
-      ? repuestos.map((r,i)=>`<span class="rc-tag" style="display:inline-flex;align-items:center;gap:5px">${escHtml(r)}${puedeEliminar?`<button onclick="eliminarRepuesto(${i})" title="Lo ponemos nosotros" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0 2px;line-height:1;font-weight:700">×</button>`:''}</span>`).join('')
+      ? repuestos.map((r,i)=>{
+          const esNuestro=r.origen==='nuestro';
+          const badge=`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:${esNuestro?'#3b82f6':'#f59e0b'};color:#fff;flex-shrink:0">${esNuestro?'NUESTRO':'GAMA'}</span>`;
+          const btn=puedeEliminar&&!esNuestro?`<button onclick="marcarNuestroRepuesto(${i})" title="Lo ponemos nosotros" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue);padding:0 2px;line-height:1;font-weight:600;white-space:nowrap">✓ Nuestro</button>`:'';
+          return`<span class="rc-tag" style="display:inline-flex;align-items:center;gap:4px;${esNuestro?'opacity:.55;text-decoration:line-through':''}">${escHtml(r.nombre)}${badge}${btn}</span>`;
+        }).join('')
       : '<span style="color:var(--text3);font-size:13px">Ninguno</span>';
-    document.getElementById('pd-rep-actions').innerHTML=(puedeEliminar&&repuestos.length>0)
-      ? `<button onclick="eliminarTodosRepuestos()" style="margin-top:6px;padding:5px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer">Todos son nuestros — limpiar espera</button>`
+    document.getElementById('pd-rep-actions').innerHTML=(puedeEliminar&&tieneGAMA)
+      ? `<button onclick="marcarTodosNuestros()" style="margin-top:6px;padding:5px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer">Todos son nuestros — limpiar espera</button>`
       : '';
   }else{repsec.style.display='none';}
   const obs=v.observaciones||'';const obsec=document.getElementById('pd-obs-section');
@@ -1417,47 +1436,51 @@ window.abrirPresupDetalle=function(patente){
 
 window.volverDesdeDetalle=function(){activarPanel('panelPendientes');}
 
-async function _guardarRepuestosActualizados(pat, v, nuevosRepuestos, eliminados){
+async function _guardarRepuestosActualizados(pat, v, nuevosRepuestos, marcadosNuestros){
   if(!v.obs?.includes('||')){showToast('Sin checklist guardado','err');return;}
   const estado=v.obs.split('||')[0];
   const clData={...(parseChecklist(v.obs)||{}),repuestos:nuevosRepuestos};
   const newObs=estado+'||'+JSON.stringify(clData);
-  const limpiarFecha=nuevosRepuestos.length===0&&!!v.fecha_rep_pendiente&&!v.fecha_rep_recibido;
+  const todosNuestros=nuevosRepuestos.length>0&&nuevosRepuestos.every(r=>normRep(r).origen==='nuestro');
+  const limpiarFecha=(nuevosRepuestos.length===0||todosNuestros)&&!!v.fecha_rep_pendiente&&!v.fecha_rep_recibido;
   const updateData={obs:newObs};
   if(limpiarFecha) updateData.fecha_rep_pendiente=null;
   try{
     const{error}=await sb.from('vehiculos').update(updateData).eq('patente',pat);
     if(error) throw error;
-    // Cancelar pedidos activos de GAMA para cada repuesto eliminado
-    for(const rep of eliminados){
+    for(const rep of marcadosNuestros){
       await sb.from('pedidos').delete().eq('patente',pat).eq('repuesto',rep).in('estado',['Solicitado','Incorrecto']);
     }
     supavehiculos[pat].repuestos=nuevosRepuestos;
     supavehiculos[pat].obs=newObs;
     if(limpiarFecha) supavehiculos[pat].fecha_rep_pendiente=null;
     abrirPresupDetalle(pat);
-    const msg=eliminados.length===1
-      ?`"${eliminados[0]}" marcado como propio`
-      :`${eliminados.length} repuestos marcados como propios${limpiarFecha?' · espera de GAMA cancelada':''}`;
+    const msg=marcadosNuestros.length===1
+      ?`"${marcadosNuestros[0]}" marcado como nuestro`
+      :`${marcadosNuestros.length} repuestos marcados como nuestros${limpiarFecha?' · espera GAMA cancelada':''}`;
     showToast(msg,'ok');
   }catch(e){showToast('Error al actualizar','err');}
 }
 
-window.eliminarRepuesto=async function(idx){
+window.marcarNuestroRepuesto=async function(idx){
   if(!clCurrentPatente)return;
   const pat=clCurrentPatente;const v=supavehiculos[pat];if(!v)return;
-  const repuestos=[...(v.repuestos||[])];
+  const repuestos=(v.repuestos||[]).map(normRep);
   if(idx<0||idx>=repuestos.length)return;
-  const eliminado=repuestos.splice(idx,1);
-  await _guardarRepuestosActualizados(pat,v,repuestos,eliminado);
+  const rep=repuestos[idx];
+  if(rep.origen==='nuestro')return;
+  repuestos[idx]={nombre:rep.nombre,origen:'nuestro'};
+  await _guardarRepuestosActualizados(pat,v,repuestos,[rep.nombre]);
 }
 
-window.eliminarTodosRepuestos=async function(){
+window.marcarTodosNuestros=async function(){
   if(!clCurrentPatente)return;
   const pat=clCurrentPatente;const v=supavehiculos[pat];if(!v)return;
-  const todos=[...(v.repuestos||[])];
-  if(!todos.length)return;
-  await _guardarRepuestosActualizados(pat,v,[],todos);
+  const repuestos=(v.repuestos||[]).map(normRep);
+  const gamaNames=repuestos.filter(r=>r.origen==='GAMA').map(r=>r.nombre);
+  if(!gamaNames.length)return;
+  const nuevos=repuestos.map(r=>({nombre:r.nombre,origen:'nuestro'}));
+  await _guardarRepuestosActualizados(pat,v,nuevos,gamaNames);
 }
 
 window.cambiarEstadoPresup=async function(estado){
@@ -1490,8 +1513,8 @@ window.abrirChecklistInline=function(){
   const pat=clCurrentPatente;if(!pat)return;
   const v=supavehiculos[pat];if(!v)return;
   clFst={
-    combustible:v.combustible||0,parabrisas:v.parabrisas||'',tapiz:v.tapiz||'',
-    trabajos:[...(v.trabajos||[])],repuestos:[...(v.repuestos||[])],
+    combustible:v.combustible||0,parabrisas:v.parabrisas||'',tapiz:v.tapiz||'',luces:v.luces||'',
+    trabajos:[...(v.trabajos||[])],repuestos:(v.repuestos||[]).map(normRep),
     accesorios:{...(v.accesorios||{})},accesoriosQty:{...(v.accesoriosQty||{})}
   };
   document.getElementById('cl-form-title').textContent=pat;
@@ -1514,6 +1537,8 @@ window.abrirChecklistInline=function(){
   clSetFuelVal(clFst.combustible);
   if(clFst.parabrisas)clSetPBVal(clFst.parabrisas);
   if(clFst.tapiz)clSetTapizVal(clFst.tapiz);
+  clSetLucesVal(clFst.luces?'Si':'No');
+  if(clFst.luces){const t=document.getElementById('cl-luces-texto');if(t)t.value=clFst.luces;}
   clRenderAccGrid();clRenderWorking();clRenderReps();
   document.querySelector('.bottom-nav').style.display='none';
   clGoStep(0);activarPanel('panelChecklist');
@@ -1569,7 +1594,7 @@ async function clSaveChecklist(){
   const estado=(clFst.trabajos?.length||clFst.repuestos?.length)?'Presupuesto terminado':'Con datos';
   const checklist={
     marca:marca||'',modelo:modelo||'',anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
-    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',
+    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',
     accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
     trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:clBuildObs()||''
   };
@@ -1595,7 +1620,7 @@ function clAutoSave(){
   const currentEstado=supavehiculos[pat]?.estado||'Pendiente de datos';
   const checklist={
     marca,modelo,anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
-    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',
+    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',
     accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
     trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:clBuildObs()
   };
@@ -1628,6 +1653,8 @@ function clSetPBVal(val){clFst.parabrisas=val;['OK','Trizado','Picado'].forEach(
 window.clSetPB=function(val){clSetPBVal(val);clAutoSave();}
 function clSetTapizVal(val){clFst.tapiz=val;const ok=document.getElementById('cl-tapiz-OK');const su=document.getElementById('cl-tapiz-Sucio');if(ok)ok.className='cl-tog-opt'+(val==='OK'?' ok':'');if(su)su.className='cl-tog-opt'+(val==='Sucio'?' warn':'');}
 window.clSetTapiz=function(val){clSetTapizVal(val);clAutoSave();}
+function clSetLucesVal(val){const no=document.getElementById('cl-luces-No');const si=document.getElementById('cl-luces-Si');if(no)no.className='cl-tog-opt'+(val==='No'?' ok':'');if(si)si.className='cl-tog-opt'+(val==='Si'?' warn':'');const row=document.getElementById('cl-luces-texto-row');if(row)row.style.display=val==='Si'?'block':'none';}
+window.clSetLuces=function(val){clSetLucesVal(val);if(val==='No'){clFst.luces='';const t=document.getElementById('cl-luces-texto');if(t)t.value='';}clAutoSave();}
 
 function clRenderAccGrid(){
   const g=document.getElementById('cl-acc-grid');if(!g)return;g.innerHTML='';
@@ -1655,11 +1682,16 @@ function clRenderWorking(){
 }
 function clRenderReps(){
   const area=document.getElementById('cl-rep-tags');if(!area)return;area.innerHTML='';
-  clFst.repuestos.forEach((r,i)=>{const tag=document.createElement('span');tag.className='cl-tag';tag.innerHTML=`${r} <button onclick="clRemoveRepuesto(${i})">×</button>`;area.appendChild(tag);});
+  clFst.repuestos.forEach((r,i)=>{
+    const nr=normRep(r);
+    const tag=document.createElement('span');tag.className='cl-tag';
+    tag.innerHTML=`${nr.nombre} <button onclick="clRemoveRepuesto(${i})">×</button>`;
+    area.appendChild(tag);
+  });
 }
 window.clAddTrabajo=function(){const inp=document.getElementById('cl-trab-input');const v=inp.value.trim();if(v&&!clFst.trabajos.includes(v)){clFst.trabajos.push(v);clRenderWorking();clAutoSave();}inp.value='';}
 window.clRemoveTrabajo=function(i){clFst.trabajos.splice(i,1);clRenderWorking();clAutoSave();}
-window.clAddRepuesto=function(){const inp=document.getElementById('cl-rep-input');const v=inp.value.trim();if(v&&!clFst.repuestos.includes(v)){clFst.repuestos.push(v);clRenderReps();clAutoSave();}inp.value='';}
+window.clAddRepuesto=function(){const inp=document.getElementById('cl-rep-input');const val=inp.value.trim();if(val&&!clFst.repuestos.some(r=>normRep(r).nombre.toLowerCase()===val.toLowerCase())){clFst.repuestos.push({nombre:val,origen:'GAMA'});clRenderReps();clAutoSave();}inp.value='';}
 window.clRemoveRepuesto=function(i){clFst.repuestos.splice(i,1);clRenderReps();clAutoSave();}
 
 function clRenderSummary(){
@@ -1688,17 +1720,20 @@ function clRenderSummary(){
       <div style="font-size:13px;color:var(--text2)">${[...accsCheck,...accsQty].join(' · ')||'Ninguno'}</div>
     </div>
     ${clFst.trabajos.length?`<div class="cl-summary-card"><div class="cl-sum-title">Trabajos</div><div class="tag-wrap">${clFst.trabajos.map(t=>`<span class="rc-tag trabajo">${t}</span>`).join('')}</div></div>`:''}
-    ${clFst.repuestos.length?`<div class="cl-summary-card"><div class="cl-sum-title">Repuestos</div><div class="tag-wrap">${clFst.repuestos.map(r=>`<span class="rc-tag">${r}</span>`).join('')}</div></div>`:''}
+    ${clFst.repuestos.length?`<div class="cl-summary-card"><div class="cl-sum-title">Repuestos</div><div class="tag-wrap">${clFst.repuestos.map(r=>normRep(r)).map(r=>`<span class="rc-tag">${r.nombre}</span>`).join('')}</div></div>`:''}`+
+    `${clFst.luces?`<div class="cl-summary-card"><div class="cl-sum-title">Luces en tablero</div><div style="font-size:13px;color:var(--text2)">${clFst.luces}</div></div>`:''}
     ${obs?`<div class="cl-summary-card"><div class="cl-sum-title">Observaciones</div><div style="font-size:13px;color:var(--text2)">${obs}</div></div>`:''}
   `;
 }
 
 async function autoCrearPedidosRepuestos(patente, repuestosList){
   if(!repuestosList||!repuestosList.length) return 0;
+  const gamaNames=repuestosList.map(normRep).filter(r=>r.origen==='GAMA').map(r=>r.nombre);
+  if(!gamaNames.length) return 0;
   try{
     const {data:existing}=await sb.from('pedidos').select('repuesto').eq('patente',patente).eq('estado','Solicitado');
     const existingSet=new Set((existing||[]).map(p=>p.repuesto.toLowerCase().trim()));
-    const nuevos=repuestosList.filter(r=>!existingSet.has(r.toLowerCase().trim()));
+    const nuevos=gamaNames.filter(r=>!existingSet.has(r.toLowerCase().trim()));
     if(!nuevos.length) return 0;
     const fecha=today();
     await sb.from('pedidos').insert(nuevos.map(rep=>({patente,repuesto:rep,observacion:'Auto-generado desde Excel',fecha_solicitud:fecha,estado:'Solicitado'})));
@@ -1713,7 +1748,7 @@ window.generarExcelInline=async function(){
   try{
     const res=await fetch('https://excel-server-dbt.onrender.com/generar-excel',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({patente:v.patente||'',marca:v.marca||'',modelo:v.modelo||'',anio:v.anio||null,km:v.km||null,combustible:v.combustible||null,trabajos:v.trabajos||[],repuestos:v.repuestos||[],observaciones:v.observaciones||''})
+      body:JSON.stringify({patente:v.patente||'',marca:v.marca||'',modelo:v.modelo||'',anio:v.anio||null,km:v.km||null,combustible:v.combustible||null,trabajos:v.trabajos||[],repuestos:(v.repuestos||[]).map(normRep).filter(r=>r.origen==='GAMA').map(r=>r.nombre),observaciones:v.observaciones||''})
     });
     if(!res.ok)throw new Error('Error servidor: '+res.status);
     const blob=await res.blob();
