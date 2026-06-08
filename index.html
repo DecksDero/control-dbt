@@ -485,6 +485,10 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
       <label>Llegó en grúa</label>
       <button type="button" id="iGrua" data-v="0" onclick="toggleGrua()" style="padding:7px 18px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s">No</button>
     </div>
+    <div class="frow" style="align-items:center">
+      <label>Ingresa como garantía</label>
+      <button type="button" id="iGarantia" data-v="0" onclick="toggleGarantia()" style="padding:7px 18px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s">No</button>
+    </div>
     <button id="btnImport" onclick="showPanel('import')" style="display:none;width:100%;padding:10px;border:1px dashed var(--border2);border-radius:var(--radius-sm);background:transparent;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:14px">Importar datos históricos</button>
     <button class="big-btn btn-green" onclick="saveIngreso()">Registrar ingreso</button>
   </div>
@@ -1052,6 +1056,8 @@ window.showPanel = function(name){
     document.getElementById('iObs').value='';
     const g=document.getElementById('iGrua');
     if(g){g.dataset.v='0';g.textContent='No';g.style.background='';g.style.color='';g.style.borderColor='';}
+    const gg=document.getElementById('iGarantia');
+    if(gg){gg.dataset.v='0';gg.textContent='No';gg.style.background='';gg.style.color='';gg.style.borderColor='';}
   }
   if(name==='salida'){document.getElementById('salidaSearch').value='';document.getElementById('salidaConfirm').innerHTML='';salidaSelectedId=null;renderSalidaList('');}
   if(name==='pendientes'){document.getElementById('bnav-pendientes').classList.add('active');renderPendientes();}
@@ -1208,22 +1214,35 @@ window.toggleGrua = function(){
   b.style.borderColor=on?'var(--amber-text)':'var(--border)';
 }
 
+window.toggleGarantia = function(){
+  const b=document.getElementById('iGarantia');
+  const on=b.dataset.v!=='1';
+  b.dataset.v=on?'1':'0';
+  b.textContent=on?'✓ Sí':'No';
+  b.style.background=on?'var(--blue-bg)':'var(--surface2)';
+  b.style.color=on?'var(--blue-text)':'var(--text2)';
+  b.style.borderColor=on?'var(--blue-text)':'var(--border)';
+}
+
 window.saveIngreso = async function(){
   const pat=document.getElementById('iPatente').value.trim().toUpperCase();
   const tal=document.getElementById('iTaller').value;
   const ing=document.getElementById('iIngreso').value;
   const obs=document.getElementById('iObs').value.trim();
   const grua=document.getElementById('iGrua').dataset.v==='1';
+  const garantia=document.getElementById('iGarantia').dataset.v==='1';
   if(!pat||!ing){showToast('Patente y fecha son obligatorias','err');return;}
   const {data:exists}=await sb.from('vehiculos').select('id').eq('patente',pat).is('salida',null).maybeSingle();
   if(exists){showToast(pat+' ya está activo en taller','err');return;}
-  const {error}=await sb.from('vehiculos').insert({patente:pat,taller:tal,ingreso:ing,obs:obs||null,grua:grua||null});
+  const {error}=await sb.from('vehiculos').insert({patente:pat,taller:tal,ingreso:ing,obs:obs||null,grua:grua||null,garantia:garantia||null});
   if(error){showToast('Error al guardar','err');return;}
-  showToast(pat+' registrado en '+tal+(grua?' · en grúa':''),'ok');
+  showToast(pat+' registrado en '+tal+(grua?' · en grúa':'')+(garantia?' · garantía':''),'ok');
   document.getElementById('iPatente').value='';
   document.getElementById('iObs').value='';
   const g=document.getElementById('iGrua');
   g.dataset.v='0';g.textContent='No';g.style.background='';g.style.color='';g.style.borderColor='';
+  const gg=document.getElementById('iGarantia');
+  gg.dataset.v='0';gg.textContent='No';gg.style.background='';gg.style.color='';gg.style.borderColor='';
   loadStats();
 }
 
@@ -1240,7 +1259,7 @@ async function renderSalidaList(q){
     <div class="sal-item${salidaSelectedId===v.id?' selected':''}" onclick="selectSalida(${v.id},'${v.patente}','${v.taller}')">
       <div class="sal-left">
         <div class="sal-pat">${v.patente}</div>
-        <div class="sal-sub">Ingresó: ${td(v.ingreso)}${v.grua?' · 🚛 Grúa':''}${v.fecha_rep_pendiente&&!v.fecha_rep_recibido?' · ⚠ Rep. pendientes':''}</div>
+        <div class="sal-sub">Ingresó: ${td(v.ingreso)}${v.garantia?' · ★ Garantía':''}${v.grua?' · 🚛 Grúa':''}${v.fecha_rep_pendiente&&!v.fecha_rep_recibido?' · ⚠ Rep. pendientes':''}</div>
       </div>
       ${tallerBadge(v.taller)}
     </div>
@@ -1378,10 +1397,11 @@ window.abrirPresupDetalle=function(patente){
   if(trabajos.length||repuestos.length){
     repsec.style.display='block';
     document.getElementById('pd-trabajos').innerHTML=trabajos.map(t=>`<span class="rc-tag trabajo">${escHtml(t)}</span>`).join('')||'<span style="color:var(--text3);font-size:13px">Ninguno</span>';
+    const puedeEliminar=window.canWrite&&v.estado==='Presupuesto enviado';
     document.getElementById('pd-repuestos').innerHTML=repuestos.length
-      ? repuestos.map((r,i)=>`<span class="rc-tag" style="display:inline-flex;align-items:center;gap:5px">${escHtml(r)}${window.canWrite?`<button onclick="eliminarRepuesto(${i})" title="Lo ponemos nosotros" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0 2px;line-height:1;font-weight:700">×</button>`:''}</span>`).join('')
+      ? repuestos.map((r,i)=>`<span class="rc-tag" style="display:inline-flex;align-items:center;gap:5px">${escHtml(r)}${puedeEliminar?`<button onclick="eliminarRepuesto(${i})" title="Lo ponemos nosotros" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0 2px;line-height:1;font-weight:700">×</button>`:''}</span>`).join('')
       : '<span style="color:var(--text3);font-size:13px">Ninguno</span>';
-    document.getElementById('pd-rep-actions').innerHTML=(window.canWrite&&repuestos.length>0)
+    document.getElementById('pd-rep-actions').innerHTML=(puedeEliminar&&repuestos.length>0)
       ? `<button onclick="eliminarTodosRepuestos()" style="margin-top:6px;padding:5px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer">Todos son nuestros — limpiar espera</button>`
       : '';
   }else{repsec.style.display='none';}
@@ -1721,7 +1741,7 @@ window.showTaller = async function(taller){
     <div class="result-card" data-vid="${v.id}">
       <div class="rc-top">
         <span class="rc-pat">${v.patente}</span>
-        <div style="display:flex;gap:6px;align-items:center">${v.grua?'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--amber-bg);color:var(--amber-text)">🚛 Grúa</span>':''}${tallerBadge(v.taller)}</div>
+        <div style="display:flex;gap:6px;align-items:center">${v.garantia?'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue-text)">★ Garantía</span>':''}${v.grua?'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--amber-bg);color:var(--amber-text)">🚛 Grúa</span>':''}${tallerBadge(v.taller)}</div>
       </div>
       <div class="rc-rows">
         <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
@@ -1814,7 +1834,7 @@ async function renderEstadisticas(){
   if(!statsData){
     cont.innerHTML = '<div class="loading">Cargando estadísticas...</div>';
     try {
-      const {data, error} = await sb.from('vehiculos').select('taller,ingreso,salida,fecha_rep_pendiente,fecha_rep_recibido,rep_origen,salida_pendientes,perdida_total');
+      const {data, error} = await sb.from('vehiculos').select('taller,ingreso,salida,fecha_rep_pendiente,fecha_rep_recibido,rep_origen,salida_pendientes,perdida_total,garantia');
       if(error) throw error;
       statsData = data || [];
     } catch(e){
@@ -1829,7 +1849,8 @@ function renderEstadisticasVista(){
   const cont = document.getElementById('statsExtContent');
   const data = statsData;
   const perdidaTotalCount = data.filter(v=>v.perdida_total).length;
-  const entregados = data.filter(v=>v.salida&&!v.perdida_total);
+  const garantiasCount    = data.filter(v=>v.garantia).length;
+  const entregados = data.filter(v=>v.salida&&!v.perdida_total&&!v.garantia);
   const enTaller   = data.filter(v=>!v.salida);
 
   // Totales
@@ -1934,7 +1955,7 @@ function renderEstadisticasVista(){
     <div class="stats-ext-grid" style="margin-bottom:16px">
       <div class="stat-ext accent" style="grid-column:span 2">
         <div class="stat-ext-val">${entregados.length}</div>
-        <div class="stat-ext-lbl">Total entregados (historial)</div>
+        <div class="stat-ext-lbl">Total entregados (historial, sin garantías)</div>
       </div>
       <div class="stat-ext">
         <div class="stat-ext-val">${totalActivos}</div>
@@ -1944,9 +1965,13 @@ function renderEstadisticasVista(){
         <div class="stat-ext-val">${promDias}</div>
         <div class="stat-ext-lbl">Días prom. en taller</div>
       </div>
-      <div class="stat-ext" style="grid-column:span 2;border-color:var(--red)">
+      <div class="stat-ext" style="border-color:var(--blue)">
+        <div class="stat-ext-val" style="color:var(--blue-text)">${garantiasCount}</div>
+        <div class="stat-ext-lbl">Garantías (total historial)</div>
+      </div>
+      <div class="stat-ext" style="border-color:var(--red)">
         <div class="stat-ext-val" style="color:var(--red)">${perdidaTotalCount}</div>
-        <div class="stat-ext-lbl">Pérdidas totales (no contadas como entregadas)</div>
+        <div class="stat-ext-lbl">Pérdidas totales</div>
       </div>
     </div>
 
