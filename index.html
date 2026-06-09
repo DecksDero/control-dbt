@@ -1784,6 +1784,19 @@ async function autoCrearPedidosRepuestos(patente, repuestosList){
   }catch(e){console.warn('pedidos auto:',e.message);return 0;}
 }
 
+function buildObsFromVehicle(v){
+  const parts=[];
+  if(v.parabrisas&&v.parabrisas!=='OK') parts.push('Parabrisas '+v.parabrisas.toLowerCase()+'.');
+  if(v.tapiz==='Sucio') parts.push('Tapiz sucio.');
+  const p=v.accesoriosQty?.['Pisos']||0; if(p) parts.push('Pisos: '+p+'.');
+  const pa=v.accesoriosQty?.['Patentes']||0; if(pa) parts.push('Patentes: '+pa+'.'); else parts.push('Sin patentes.');
+  const faltantes=CL_ACCESORIOS.filter(a=>a.tipo==='check'&&!v.accesorios?.[a.key]).map(a=>a.key);
+  if(faltantes.length) parts.push('Faltante: '+faltantes.join(', ')+'.');
+  if(v.luces) parts.push('Luces en tablero: '+v.luces+'.');
+  if(v.notas) parts.push(v.notas);
+  return parts.join(' ');
+}
+
 window.generarExcelInline=async function(){
   const pat=clCurrentPatente;const v=pat?supavehiculos[pat]:null;if(!v)return;
   const btn=document.getElementById('pd-btn-excel');
@@ -1791,7 +1804,7 @@ window.generarExcelInline=async function(){
   try{
     const res=await fetch('https://excel-server-dbt.onrender.com/generar-excel',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({patente:v.patente||'',marca:v.marca||'',modelo:v.modelo||'',anio:v.anio||null,km:v.km||null,combustible:v.combustible||null,trabajos:v.trabajos||[],repuestos:(v.repuestos||[]).map(normRep).filter(r=>r.origen==='GAMA').map(r=>r.codigo?r.nombre+' ['+r.codigo+']':r.nombre),observaciones:v.observaciones||''})
+      body:JSON.stringify({patente:v.patente||'',marca:v.marca||'',modelo:v.modelo||'',anio:v.anio||null,km:v.km||null,combustible:v.combustible||null,trabajos:v.trabajos||[],repuestos:(v.repuestos||[]).map(normRep).filter(r=>r.origen==='GAMA').map(r=>r.codigo?r.nombre+' ['+r.codigo+']':r.nombre),observaciones:buildObsFromVehicle(v)||''})
     });
     if(!res.ok)throw new Error('Error servidor: '+res.status);
     const blob=await res.blob();
