@@ -614,7 +614,7 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
           <div class="cl-tog-opt" id="cl-luces-Si" onclick="clSetLuces('Si')">Sí</div>
         </div>
         <div class="cl-field" id="cl-luces-texto-row" style="display:none;margin-top:6px">
-          <textarea id="cl-luces-texto" placeholder="Ej: ABS, Check Engine, temperatura..." oninput="clFst.luces=this.value;clAutoSave()" style="height:60px;line-height:1.5"></textarea>
+          <textarea id="cl-luces-texto" placeholder="Ej: ABS, Check Engine, temperatura..." oninput="clSetLucesTexto(this.value)" style="height:60px;line-height:1.5"></textarea>
         </div>
       </div>
       <!-- PASO 2: Trabajos y repuestos -->
@@ -1693,6 +1693,7 @@ function clSetTapizVal(val){clFst.tapiz=val;const ok=document.getElementById('cl
 window.clSetTapiz=function(val){clSetTapizVal(val);clAutoSave();}
 function clSetLucesVal(val){const no=document.getElementById('cl-luces-No');const si=document.getElementById('cl-luces-Si');if(no)no.className='cl-tog-opt'+(val==='No'?' ok':'');if(si)si.className='cl-tog-opt'+(val==='Si'?' warn':'');const row=document.getElementById('cl-luces-texto-row');if(row)row.style.display=val==='Si'?'block':'none';}
 window.clSetLuces=function(val){clSetLucesVal(val);if(val==='No'){clFst.luces='';const t=document.getElementById('cl-luces-texto');if(t)t.value='';}clAutoSave();}
+window.clSetLucesTexto=function(val){clFst.luces=val;clAutoSave();}
 function clSetVarianteVal(val){const n=document.getElementById('cl-variante-Nuevo');const v=document.getElementById('cl-variante-Viejo');if(n)n.className='cl-tog-opt'+(val==='Nuevo'?' ok':'');if(v)v.className='cl-tog-opt'+(val==='Viejo'?' ok':'');}
 window.clSetVariante=function(val){clFst.variante=val;clSetVarianteVal(val);clAutoSave();}
 window.clBuscarCodigo=function(){const v=document.getElementById('cl-rep-input').value.trim().toLowerCase();const ci=document.getElementById('cl-rep-codigo');if(!v||ci?.value) return;const c=clCodigosCache[v];if(c)ci.value=c;};
