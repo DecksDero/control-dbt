@@ -278,6 +278,10 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
 .cl-add-row{display:flex;gap:8px}
 .cl-add-row input{flex:1;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;padding:9px 12px;outline:none}
 .cl-add-row button{padding:9px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;cursor:pointer;white-space:nowrap}
+.cl-add-row-rep{flex-wrap:wrap;align-items:stretch}
+.cl-add-row-rep .cl-rep-name{flex:1 1 100%}
+.cl-add-row-rep .cl-rep-cod{flex:1 1 0}
+.cl-add-row-rep button{flex:0 0 auto}
 .cl-nav-btns{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
 .cl-nav-btns button{flex:1;padding:12px;font-size:14px;font-weight:600;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text)}
 .cl-nav-btns button.cl-next{background:var(--text);color:#fff;border-color:var(--text)}
@@ -627,9 +631,9 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
         </div>
         <div class="cl-section-label">Repuestos necesarios</div>
         <div class="cl-tags-wrap" id="cl-rep-tags"></div>
-        <div class="cl-add-row" style="margin-top:4px">
-          <input id="cl-rep-input" placeholder="Ej: paragolpe delantero..." onblur="clBuscarCodigo()" onkeydown="if(event.key==='Enter')clAddRepuesto()">
-          <input id="cl-rep-codigo" placeholder="Código..." style="flex:0 0 110px" onkeydown="if(event.key==='Enter')clAddRepuesto()">
+        <div class="cl-add-row cl-add-row-rep" style="margin-top:4px">
+          <input id="cl-rep-input" class="cl-rep-name" placeholder="Ej: paragolpe delantero..." onblur="clBuscarCodigo()" onkeydown="if(event.key==='Enter')clAddRepuesto()">
+          <input id="cl-rep-codigo" class="cl-rep-cod" placeholder="Código..." onkeydown="if(event.key==='Enter')clAddRepuesto()">
           <button onclick="clAddRepuesto()">+ Agregar</button>
         </div>
         <div class="cl-section-label">Observaciones</div>
