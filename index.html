@@ -1123,7 +1123,7 @@ window.doSearch = async function(){
       <button class="rc-expand-btn" onclick="togglePresupDetalle(this,'srch-${v.id}')">Ver presupuesto ▾</button>
       <div class="rc-presup-section" id="srch-${v.id}">
         ${trabajos.length?`<div class="rc-sub-label">Trabajos</div><div class="tag-wrap">${trabajos.map(t=>`<span class="rc-tag trabajo">${escHtml(t)}</span>`).join('')}</div>`:''}
-        ${repuestos.length?`<div class="rc-sub-label">Repuestos</div><div class="tag-wrap">${repuestos.map(r=>{const nr=normRep(r);return`<span class="rc-tag" style="${nr.origen==='nuestro'?'opacity:.6;text-decoration:line-through':''}">${escHtml(nr.nombre)}<span style="margin-left:4px;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:${nr.origen==='nuestro'?'#3b82f6':'#f59e0b'};color:#fff;vertical-align:middle">${nr.origen==='nuestro'?'N':'G'}</span></span>`;}).join('')}</div>`:''}
+        ${repuestos.length?`<div class="rc-sub-label">Repuestos</div><div class="tag-wrap">${repuestos.map(r=>{const nr=normRep(r);return`<span class="rc-tag" style="${nr.origen==='nuestro'?'opacity:.6;text-decoration:line-through':''}">${escHtml(nr.nombre)}<span style="margin-left:4px;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:${nr.origen==='nuestro'?'#3b82f6':'#f59e0b'};color:#fff;vertical-align:middle">${nr.origen==='nuestro'?'D':'G'}</span></span>`;}).join('')}</div>`:''}
         ${cl?.observaciones?`<div class="rc-sub-label">Observaciones</div><div class="presup-obs">${escHtml(cl.observaciones)}</div>`:''}
       </div>`:''}
       ${!v.salida && window.canChangeTaller ? `
@@ -1423,13 +1423,13 @@ window.abrirPresupDetalle=function(patente){
     document.getElementById('pd-repuestos').innerHTML=repuestos.length
       ? repuestos.map((r,i)=>{
           const esNuestro=r.origen==='nuestro';
-          const badge=`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:${esNuestro?'#3b82f6':'#f59e0b'};color:#fff;flex-shrink:0">${esNuestro?'NUESTRO':'GAMA'}</span>`;
-          const btn=puedeEliminar&&!esNuestro?`<button onclick="marcarNuestroRepuesto(${i})" title="Lo ponemos nosotros" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue);padding:0 2px;line-height:1;font-weight:600;white-space:nowrap">✓ Nuestro</button>`:'';
+          const badge=`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:${esNuestro?'#3b82f6':'#f59e0b'};color:#fff;flex-shrink:0">${esNuestro?'DBT':'GAMA'}</span>`;
+          const btn=puedeEliminar&&!esNuestro?`<button onclick="marcarNuestroRepuesto(${i})" title="Lo pone DBT" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue);padding:0 2px;line-height:1;font-weight:600;white-space:nowrap">✓ DBT</button>`:'';
           return`<span class="rc-tag" style="display:inline-flex;align-items:center;gap:4px;${esNuestro?'opacity:.55;text-decoration:line-through':''}">${escHtml(r.nombre)}${badge}${btn}</span>`;
         }).join('')
       : '<span style="color:var(--text3);font-size:13px">Ninguno</span>';
     document.getElementById('pd-rep-actions').innerHTML=(puedeEliminar&&tieneGAMA)
-      ? `<button onclick="marcarTodosNuestros()" style="margin-top:6px;padding:5px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer">Todos son nuestros — limpiar espera</button>`
+      ? `<button onclick="marcarTodosNuestros()" style="margin-top:6px;padding:5px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer">Todos son DBT — limpiar espera</button>`
       : '';
   }else{repsec.style.display='none';}
   const obs=v.observaciones||'';const obsec=document.getElementById('pd-obs-section');
@@ -1465,8 +1465,8 @@ async function _guardarRepuestosActualizados(pat, v, nuevosRepuestos, marcadosNu
     abrirPresupDetalle(pat);
     if(marcadosNuestros.length>0){
       const msg=marcadosNuestros.length===1
-        ?`"${marcadosNuestros[0]}" marcado como nuestro`
-        :`${marcadosNuestros.length} repuestos marcados como nuestros${limpiarFecha?' · espera GAMA cancelada':''}`;
+        ?`"${marcadosNuestros[0]}" lo pone DBT`
+        :`${marcadosNuestros.length} repuestos marcados como DBT${limpiarFecha?' · espera GAMA cancelada':''}`;
       showToast(msg,'ok');
     }
   }catch(e){showToast('Error al actualizar','err');}
@@ -1494,7 +1494,7 @@ window.marcarTodosNuestros=async function(){
   const{error:eAll}=await sb.from('pedidos').delete().eq('patente',pat).in('estado',['Solicitado','Incorrecto']);
   if(eAll) showToast('Advertencia: no se pudieron limpiar pedidos GAMA','err');
   await _guardarRepuestosActualizados(pat,v,nuevos,[]);
-  showToast(`${gamaNames.length} repuesto${gamaNames.length>1?'s':''} marcado${gamaNames.length>1?'s':''} como nuestros · pedidos GAMA eliminados`,'ok');
+  showToast(`${gamaNames.length} repuesto${gamaNames.length>1?'s':''} marcado${gamaNames.length>1?'s':''} como DBT · pedidos GAMA eliminados`,'ok');
 }
 
 window.cambiarEstadoPresup=async function(estado){
