@@ -576,6 +576,13 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
         </div>
         <div class="cl-field" id="cl-otra-marca-row" style="display:none"><label>Especificar marca</label><input id="cl-otra-marca" placeholder="Ej: Suzuki..." oninput="clAutoSave()"></div>
         <div class="cl-field" id="cl-otro-row" style="display:none"><label>Especificar modelo</label><input id="cl-otro-modelo" placeholder="Escribe el modelo..." oninput="clAutoSave()"></div>
+        <div class="cl-field" id="cl-variante-row" style="display:none">
+          <label>¿Modelo nuevo o viejo?</label>
+          <div class="cl-tog-row">
+            <div class="cl-tog-opt" id="cl-variante-Nuevo" onclick="clSetVariante('Nuevo')">Nuevo</div>
+            <div class="cl-tog-opt" id="cl-variante-Viejo" onclick="clSetVariante('Viejo')">Viejo</div>
+          </div>
+        </div>
         <div class="cl-field"><label>Kilometraje</label><input id="cl-km" type="number" placeholder="85000" oninput="clAutoSave()"></div>
         <div class="cl-field"><label>Combustible</label>
           <div class="cl-fuel-row">
@@ -621,7 +628,8 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
         <div class="cl-section-label">Repuestos necesarios</div>
         <div class="cl-tags-wrap" id="cl-rep-tags"></div>
         <div class="cl-add-row" style="margin-top:4px">
-          <input id="cl-rep-input" placeholder="Ej: paragolpe delantero..." onkeydown="if(event.key==='Enter')clAddRepuesto()">
+          <input id="cl-rep-input" placeholder="Ej: paragolpe delantero..." onblur="clBuscarCodigo()" onkeydown="if(event.key==='Enter')clAddRepuesto()">
+          <input id="cl-rep-codigo" placeholder="Código..." style="flex:0 0 110px" onkeydown="if(event.key==='Enter')clAddRepuesto()">
           <button onclick="clAddRepuesto()">+ Agregar</button>
         </div>
         <div class="cl-section-label">Observaciones</div>
@@ -831,7 +839,8 @@ let supavehiculos={};
 let presupTab='pendiente';
 let clCurrentPatente=null;
 let clStep=0;
-let clFst={combustible:0,parabrisas:'',tapiz:'',luces:'',trabajos:[],repuestos:[],accesorios:{},accesoriosQty:{}};
+let clFst={combustible:0,parabrisas:'',tapiz:'',luces:'',variante:'',trabajos:[],repuestos:[],accesorios:{},accesoriosQty:{}};
+let clCodigosCache={};
 const ALL_PANELS=['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin','panelPresupDetalle','panelChecklist','panelRepuestos','panelFecha'];
 
 function activarPanel(id){
@@ -890,7 +899,7 @@ function tallerBadge(t){const m={PINTURA:['b-pintura','Pintura'],RILDO:['b-rildo
 function today(){return new Date().toISOString().slice(0,10);}
 function obsLabel(obs){if(!obs)return null;if(obs.includes('||'))return obs.split('||')[0].trim();return obs;}
 function parseChecklist(obs){if(!obs||!obs.includes('||'))return null;try{return JSON.parse(obs.split('||')[1]);}catch(e){return null;}}
-function normRep(r){return typeof r==='string'?{nombre:r,origen:'GAMA'}:r;}
+function normRep(r){return typeof r==='string'?{nombre:r,origen:'GAMA',codigo:''}:{codigo:'',...r};}
 function estadoFromObs(obs){
   if(!obs)return null;
   if(obs.includes('||'))return obs.split('||')[0].trim();
@@ -1425,7 +1434,7 @@ window.abrirPresupDetalle=function(patente){
           const esNuestro=r.origen==='nuestro';
           const badge=`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:${esNuestro?'#3b82f6':'#f59e0b'};color:#fff;flex-shrink:0">${esNuestro?'DBT':'GAMA'}</span>`;
           const btn=puedeEliminar&&!esNuestro?`<button onclick="marcarNuestroRepuesto(${i})" title="Lo pone DBT" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue);padding:0 2px;line-height:1;font-weight:600;white-space:nowrap">✓ DBT</button>`:'';
-          return`<span class="rc-tag" style="display:inline-flex;align-items:center;gap:4px;${esNuestro?'opacity:.55;text-decoration:line-through':''}">${escHtml(r.nombre)}${badge}${btn}</span>`;
+          return`<span class="rc-tag" style="display:inline-flex;align-items:center;gap:4px;${esNuestro?'opacity:.55;text-decoration:line-through':''}">${escHtml(r.nombre)}${r.codigo?`<span style="font-size:10px;font-family:monospace;opacity:.65">${escHtml(r.codigo)}</span>`:''}${badge}${btn}</span>`;
         }).join('')
       : '<span style="color:var(--text3);font-size:13px">Ninguno</span>';
     document.getElementById('pd-rep-actions').innerHTML=(puedeEliminar&&tieneGAMA)
@@ -1527,7 +1536,7 @@ window.abrirChecklistInline=function(){
   const pat=clCurrentPatente;if(!pat)return;
   const v=supavehiculos[pat];if(!v)return;
   clFst={
-    combustible:v.combustible||0,parabrisas:v.parabrisas||'',tapiz:v.tapiz||'',luces:v.luces||'',
+    combustible:v.combustible||0,parabrisas:v.parabrisas||'',tapiz:v.tapiz||'',luces:v.luces||'',variante:v.variante||'',
     trabajos:[...(v.trabajos||[])],repuestos:(v.repuestos||[]).map(normRep),
     accesorios:{...(v.accesorios||{})},accesoriosQty:{...(v.accesoriosQty||{})}
   };
@@ -1548,11 +1557,13 @@ window.abrirChecklistInline=function(){
     if(!Array.from(modeloSel.options).some(o=>o.value===v.modelo)&&v.modelo!=='Otro'&&v.marca&&v.marca!=='Otra'){clSaveCustomBrandModel(v.marca,v.modelo);clUpdateModelos();}
     modeloSel.value=v.modelo;clCheckOtroModelo();
   }
+  clLoadCodigos(v.marca||'',v.modelo||'');
   clSetFuelVal(clFst.combustible);
   if(clFst.parabrisas)clSetPBVal(clFst.parabrisas);
   if(clFst.tapiz)clSetTapizVal(clFst.tapiz);
   clSetLucesVal(clFst.luces?'Si':'No');
   if(clFst.luces){const t=document.getElementById('cl-luces-texto');if(t)t.value=clFst.luces;}
+  clSetVarianteVal(clFst.variante||'');
   clRenderAccGrid();clRenderWorking();clRenderReps();
   document.querySelector('.bottom-nav').style.display='none';
   clGoStep(0);activarPanel('panelChecklist');
@@ -1593,6 +1604,7 @@ function clBuildObs(){
   const pa=clFst.accesoriosQty?.['Patentes']||0; if(pa) parts.push('Patentes: '+pa+'.'); else parts.push('Sin patentes.');
   const faltantes=CL_ACCESORIOS.filter(a=>a.tipo==='check'&&!clFst.accesorios?.[a.key]).map(a=>a.key);
   if(faltantes.length) parts.push('Faltante: '+faltantes.join(', ')+'.');
+  if(clFst.luces) parts.push('Luces en tablero: '+clFst.luces+'.');
   const obsText=document.getElementById('cl-obs')?.value||''; if(obsText) parts.push(obsText);
   return parts.join(' ');
 }
@@ -1608,7 +1620,7 @@ async function clSaveChecklist(){
   const estado=(clFst.trabajos?.length||clFst.repuestos?.length)?'Presupuesto terminado':'Con datos';
   const checklist={
     marca:marca||'',modelo:modelo||'',anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
-    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',
+    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',variante:clFst.variante||'',
     accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
     trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:clBuildObs()||''
   };
@@ -1619,6 +1631,7 @@ async function clSaveChecklist(){
     if(supavehiculos[pat]){supavehiculos[pat].obs=obsValue;supavehiculos[pat].estado=estado;Object.assign(supavehiculos[pat],checklist);}
     if(marcaVal==='Otra'&&marca)clSaveCustomBrandModel(marca,modelo||'');
     else if(modeloVal==='Otro'&&modelo&&marcaVal&&marcaVal!=='Otra')clSaveCustomBrandModel(marcaVal,modelo);
+    await clSaveCodigos(marca,modelo);
     return true;
   }catch(e){showToast('Error al guardar: '+e.message,'err');return false;}
 }
@@ -1634,7 +1647,7 @@ function clAutoSave(){
   const currentEstado=supavehiculos[pat]?.estado||'Pendiente de datos';
   const checklist={
     marca,modelo,anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
-    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',
+    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',variante:clFst.variante||'',
     accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
     trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:clBuildObs()
   };
@@ -1659,7 +1672,14 @@ window.clUpdateModelos=function(){
   (clGetMergedModelos()[marca]||['Otro']).forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);});
   clCheckOtroModelo();
 }
-window.clCheckOtroModelo=function(){document.getElementById('cl-otro-row').style.display=document.getElementById('cl-modelo').value==='Otro'?'block':'none';}
+window.clCheckOtroModelo=function(){
+  const m=document.getElementById('cl-modelo').value;
+  const ma=document.getElementById('cl-marca').value;
+  document.getElementById('cl-otro-row').style.display=m==='Otro'?'block':'none';
+  const showVar=(ma==='Citroën'&&m==='Berlingo')||(ma==='Peugeot'&&m==='Partner');
+  document.getElementById('cl-variante-row').style.display=showVar?'block':'none';
+  if(!showVar){clFst.variante='';clSetVarianteVal('');}
+}
 
 function clSetFuelVal(n){clFst.combustible=n;for(let i=1;i<=4;i++){const el=document.getElementById('cl-fuel-'+i);if(el)el.classList.toggle('on',i<=n);}}
 window.clSetFuel=function(n){clSetFuelVal(n);clAutoSave();}
@@ -1669,6 +1689,11 @@ function clSetTapizVal(val){clFst.tapiz=val;const ok=document.getElementById('cl
 window.clSetTapiz=function(val){clSetTapizVal(val);clAutoSave();}
 function clSetLucesVal(val){const no=document.getElementById('cl-luces-No');const si=document.getElementById('cl-luces-Si');if(no)no.className='cl-tog-opt'+(val==='No'?' ok':'');if(si)si.className='cl-tog-opt'+(val==='Si'?' warn':'');const row=document.getElementById('cl-luces-texto-row');if(row)row.style.display=val==='Si'?'block':'none';}
 window.clSetLuces=function(val){clSetLucesVal(val);if(val==='No'){clFst.luces='';const t=document.getElementById('cl-luces-texto');if(t)t.value='';}clAutoSave();}
+function clSetVarianteVal(val){const n=document.getElementById('cl-variante-Nuevo');const v=document.getElementById('cl-variante-Viejo');if(n)n.className='cl-tog-opt'+(val==='Nuevo'?' ok':'');if(v)v.className='cl-tog-opt'+(val==='Viejo'?' ok':'');}
+window.clSetVariante=function(val){clFst.variante=val;clSetVarianteVal(val);clAutoSave();}
+window.clBuscarCodigo=function(){const v=document.getElementById('cl-rep-input').value.trim().toLowerCase();const ci=document.getElementById('cl-rep-codigo');if(!v||ci?.value) return;const c=clCodigosCache[v];if(c)ci.value=c;};
+async function clLoadCodigos(marca,modelo){clCodigosCache={};if(!marca||!modelo) return;try{const{data}=await sb.from('codigos_repuestos').select('nombre,codigo').eq('marca',marca).eq('modelo',modelo);(data||[]).forEach(c=>{clCodigosCache[c.nombre.toLowerCase()]=c.codigo;});}catch(e){}}
+async function clSaveCodigos(marca,modelo){if(!marca||!modelo) return;const nuevos=clFst.repuestos.map(normRep).filter(r=>r.codigo&&r.codigo.trim());if(!nuevos.length) return;try{await sb.from('codigos_repuestos').upsert(nuevos.map(r=>({marca,modelo,nombre:r.nombre,codigo:r.codigo})),{onConflict:'marca,modelo,nombre'});nuevos.forEach(r=>{clCodigosCache[r.nombre.toLowerCase()]=r.codigo;});}catch(e){console.warn('codigos:',e.message);}}
 
 function clRenderAccGrid(){
   const g=document.getElementById('cl-acc-grid');if(!g)return;g.innerHTML='';
@@ -1699,13 +1724,13 @@ function clRenderReps(){
   clFst.repuestos.forEach((r,i)=>{
     const nr=normRep(r);
     const tag=document.createElement('span');tag.className='cl-tag';
-    tag.innerHTML=`${nr.nombre} <button onclick="clRemoveRepuesto(${i})">×</button>`;
+    tag.innerHTML=`${nr.nombre}${nr.codigo?` <span style="font-size:10px;opacity:.65;font-family:monospace">${nr.codigo}</span>`:''} <button onclick="clRemoveRepuesto(${i})">×</button>`;
     area.appendChild(tag);
   });
 }
 window.clAddTrabajo=function(){const inp=document.getElementById('cl-trab-input');const v=inp.value.trim();if(v&&!clFst.trabajos.includes(v)){clFst.trabajos.push(v);clRenderWorking();clAutoSave();}inp.value='';}
 window.clRemoveTrabajo=function(i){clFst.trabajos.splice(i,1);clRenderWorking();clAutoSave();}
-window.clAddRepuesto=function(){const inp=document.getElementById('cl-rep-input');const val=inp.value.trim();if(val&&!clFst.repuestos.some(r=>normRep(r).nombre.toLowerCase()===val.toLowerCase())){clFst.repuestos.push({nombre:val,origen:'GAMA'});clRenderReps();clAutoSave();}inp.value='';}
+window.clAddRepuesto=function(){const inp=document.getElementById('cl-rep-input');const codInp=document.getElementById('cl-rep-codigo');const val=inp.value.trim();const cod=codInp?codInp.value.trim():'';if(val&&!clFst.repuestos.some(r=>normRep(r).nombre.toLowerCase()===val.toLowerCase())){clFst.repuestos.push({nombre:val,origen:'GAMA',codigo:cod});clRenderReps();clAutoSave();}inp.value='';if(codInp)codInp.value='';}
 window.clRemoveRepuesto=function(i){clFst.repuestos.splice(i,1);clRenderReps();clAutoSave();}
 
 function clRenderSummary(){
@@ -1762,7 +1787,7 @@ window.generarExcelInline=async function(){
   try{
     const res=await fetch('https://excel-server-dbt.onrender.com/generar-excel',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({patente:v.patente||'',marca:v.marca||'',modelo:v.modelo||'',anio:v.anio||null,km:v.km||null,combustible:v.combustible||null,trabajos:v.trabajos||[],repuestos:(v.repuestos||[]).map(normRep).filter(r=>r.origen==='GAMA').map(r=>r.nombre),observaciones:v.observaciones||''})
+      body:JSON.stringify({patente:v.patente||'',marca:v.marca||'',modelo:v.modelo||'',anio:v.anio||null,km:v.km||null,combustible:v.combustible||null,trabajos:v.trabajos||[],repuestos:(v.repuestos||[]).map(normRep).filter(r=>r.origen==='GAMA').map(r=>r.codigo?r.nombre+' ['+r.codigo+']':r.nombre),observaciones:v.observaciones||''})
     });
     if(!res.ok)throw new Error('Error servidor: '+res.status);
     const blob=await res.blob();
