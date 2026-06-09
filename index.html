@@ -887,9 +887,9 @@ async function loadSupavehiculos(){
     supavehiculos[pat]={
       ...v,patente:pat,estado:estadoFromObs(v.obs)||'Pendiente de datos',
       marca:cl?.marca||'',modelo:cl?.modelo||'',anio:cl?.anio||null,km:cl?.km||null,
-      combustible:cl?.combustible||0,parabrisas:cl?.parabrisas||'',tapiz:cl?.tapiz||'',luces:cl?.luces||'',
+      combustible:cl?.combustible||0,parabrisas:cl?.parabrisas||'',tapiz:cl?.tapiz||'',luces:cl?.luces||'',variante:cl?.variante||'',
       accesorios:cl?.accesorios||{},accesoriosQty:cl?.accesoriosQty||{},
-      trabajos:cl?.trabajos||[],repuestos:cl?.repuestos||[],observaciones:cl?.observaciones||''
+      trabajos:cl?.trabajos||[],repuestos:cl?.repuestos||[],notas:cl?.notas||'',observaciones:cl?.observaciones||''
     };
   });
 }
@@ -1441,7 +1441,7 @@ window.abrirPresupDetalle=function(patente){
       ? `<button onclick="marcarTodosNuestros()" style="margin-top:6px;padding:5px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer">Todos son DBT — limpiar espera</button>`
       : '';
   }else{repsec.style.display='none';}
-  const obs=v.observaciones||'';const obsec=document.getElementById('pd-obs-section');
+  const obs=buildObsFromVehicle(v)||'';const obsec=document.getElementById('pd-obs-section');
   if(obs){obsec.style.display='block';document.getElementById('pd-obs').textContent=obs;}
   else{obsec.style.display='none';}
   const tieneChecklist=!!(v.trabajos?.length||v.repuestos?.length||v.parabrisas);
@@ -1606,7 +1606,7 @@ function clBuildObs(){
   const pa=clFst.accesoriosQty?.['Patentes']||0; if(pa) parts.push('Patentes: '+pa+'.'); else parts.push('Sin patentes.');
   const faltantes=CL_ACCESORIOS.filter(a=>a.tipo==='check'&&!clFst.accesorios?.[a.key]).map(a=>a.key);
   if(faltantes.length) parts.push('Faltante: '+faltantes.join(', ')+'.');
-  if(clFst.luces) parts.push('Luces en tablero: '+clFst.luces+'.');
+  if(clFst.luces) parts.push('Luz encendida en tablero: '+clFst.luces+'.');
   const obsText=document.getElementById('cl-obs')?.value||''; if(obsText) parts.push(obsText);
   return parts.join(' ');
 }
@@ -1792,7 +1792,7 @@ function buildObsFromVehicle(v){
   const pa=v.accesoriosQty?.['Patentes']||0; if(pa) parts.push('Patentes: '+pa+'.'); else parts.push('Sin patentes.');
   const faltantes=CL_ACCESORIOS.filter(a=>a.tipo==='check'&&!v.accesorios?.[a.key]).map(a=>a.key);
   if(faltantes.length) parts.push('Faltante: '+faltantes.join(', ')+'.');
-  if(v.luces) parts.push('Luces en tablero: '+v.luces+'.');
+  if(v.luces) parts.push('Luz encendida en tablero: '+v.luces+'.');
   if(v.notas) parts.push(v.notas);
   return parts.join(' ');
 }
