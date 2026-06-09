@@ -1546,7 +1546,7 @@ window.abrirChecklistInline=function(){
   document.getElementById('cl-patente').value=pat;
   document.getElementById('cl-anio').value=v.anio||'';
   document.getElementById('cl-km').value=v.km||'';
-  document.getElementById('cl-obs').value=v.observaciones||'';
+  document.getElementById('cl-obs').value=v.notas||'';
   if(v.marca){
     const marcaSel=document.getElementById('cl-marca');
     if(!Array.from(marcaSel.options).some(o=>o.value===v.marca)&&v.marca!=='Otra'){clSaveCustomBrandModel(v.marca,'');clPopulateMarcas();}
@@ -1622,7 +1622,8 @@ async function clSaveChecklist(){
     marca:marca||'',modelo:modelo||'',anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
     combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',variante:clFst.variante||'',
     accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
-    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:clBuildObs()||''
+    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],
+    notas:document.getElementById('cl-obs')?.value||'',observaciones:clBuildObs()||''
   };
   const obsValue=estado+'||'+JSON.stringify(checklist);
   try{
@@ -1649,7 +1650,8 @@ function clAutoSave(){
     marca,modelo,anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
     combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',variante:clFst.variante||'',
     accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
-    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],observaciones:clBuildObs()
+    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],
+    notas:document.getElementById('cl-obs')?.value||'',observaciones:clBuildObs()
   };
   const obsValue=currentEstado+'||'+JSON.stringify(checklist);
   clearTimeout(clAutoSave._timer);
