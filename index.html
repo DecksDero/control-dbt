@@ -1569,7 +1569,9 @@ window.abrirChecklistInline=function(){
   clGoStep(0);activarPanel('panelChecklist');
 }
 
-window.volverDesdeChecklist=function(){
+window.volverDesdeChecklist=async function(){
+  clearTimeout(clAutoSave._timer);
+  if(clCurrentPatente&&supavehiculos[clCurrentPatente])await clSaveChecklist();
   document.querySelector('.bottom-nav').style.display='flex';
   activarPanel('panelPresupDetalle');
   if(clCurrentPatente&&supavehiculos[clCurrentPatente])abrirPresupDetalle(clCurrentPatente);
