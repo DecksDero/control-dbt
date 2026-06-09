@@ -1306,10 +1306,18 @@ window.confirmSalida = async function(id, pat){
   if(!fecha){showToast('Selecciona una fecha','err');return;}
   const v=salidaVehiculos[id]||{};
   const clv=parseChecklist(v.obs);
-  const gamaConf=(clv?.repuestos||[]).filter(r=>typeof r==='string'||r.origen==='GAMA');
-  const conPendientes=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido&&gamaConf.length);
+  const todosReps=(clv?.repuestos||[]).map(normRep);
+  const gamaReps=todosReps.filter(r=>r.origen==='GAMA');
+  const nuestrosReps=todosReps.filter(r=>r.origen==='nuestro');
+  const conPendientes=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido&&gamaReps.length);
   const{error}=await sb.from('vehiculos').update({salida:fecha,taller:'NA',salida_pendientes:conPendientes}).eq('id',id);
   if(error){showToast('Error al guardar','err');return;}
+  // Eliminar pedidos activos para los repuestos marcados como "nuestro" (el taller los provee)
+  if(nuestrosReps.length){
+    for(const r of nuestrosReps){
+      await sb.from('pedidos').delete().eq('patente',pat).filter('repuesto','ilike',r.nombre).in('estado',['Solicitado','Incorrecto']);
+    }
+  }
   showToast('Salida de '+pat+(conPendientes?' · con rep. pendientes':'')+' registrada','ok');
   statsData=null;
   salidaSelectedId=null;
