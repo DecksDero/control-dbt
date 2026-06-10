@@ -904,6 +904,8 @@ function today(){return new Date().toISOString().slice(0,10);}
 function obsLabel(obs){if(!obs)return null;if(obs.includes('||'))return obs.split('||')[0].trim();return obs;}
 function parseChecklist(obs){if(!obs||!obs.includes('||'))return null;try{return JSON.parse(obs.split('||')[1]);}catch(e){return null;}}
 function normRep(r){return typeof r==='string'?{nombre:r,origen:'GAMA',codigo:''}:{codigo:'',...r};}
+// Clave de comparación de nombres de repuesto: ignora mayúsculas, tildes y espacios de más.
+function clNorm(s){return (s||'').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');}
 function estadoFromObs(obs){
   if(!obs)return null;
   if(obs.includes('||'))return obs.split('||')[0].trim();
@@ -1687,6 +1689,7 @@ window.clCheckOtroModelo=function(){
   const showVar=(ma==='Citroën'&&m==='Berlingo')||(ma==='Peugeot'&&m==='Partner');
   document.getElementById('cl-variante-row').style.display=showVar?'block':'none';
   if(!showVar){clFst.variante='';clSetVarianteVal('');}
+  clReloadCodigos();
 }
 
 function clSetFuelVal(n){clFst.combustible=n;for(let i=1;i<=4;i++){const el=document.getElementById('cl-fuel-'+i);if(el)el.classList.toggle('on',i<=n);}}
@@ -1699,30 +1702,65 @@ function clSetLucesVal(val){const no=document.getElementById('cl-luces-No');cons
 window.clSetLuces=function(val){clSetLucesVal(val);if(val==='No'){clFst.luces='';const t=document.getElementById('cl-luces-texto');if(t)t.value='';}clAutoSave();}
 window.clSetLucesTexto=function(val){clFst.luces=val;clAutoSave();}
 function clSetVarianteVal(val){const n=document.getElementById('cl-variante-Nuevo');const v=document.getElementById('cl-variante-Viejo');if(n)n.className='cl-tog-opt'+(val==='Nuevo'?' ok':'');if(v)v.className='cl-tog-opt'+(val==='Viejo'?' ok':'');}
-window.clSetVariante=function(val){clFst.variante=val;clSetVarianteVal(val);clAutoSave();}
-window.clBuscarCodigo=function(){const v=document.getElementById('cl-rep-input').value.trim().toLowerCase();const ci=document.getElementById('cl-rep-codigo');if(!v||ci?.value) return;const c=clCodigosCache[v];if(c)ci.value=c;};
+window.clSetVariante=function(val){clFst.variante=val;clSetVarianteVal(val);clAutoSave();clReloadCodigos();}
+window.clBuscarCodigo=function(){const v=clNorm(document.getElementById('cl-rep-input').value);const ci=document.getElementById('cl-rep-codigo');if(!v||ci?.value) return;const c=clCodigosCache[v];if(c)ci.value=c;};
 // Berlingo (Citroën) y Partner (Peugeot) comparten plataforma → sus códigos viven en un grupo
 // compartido bajo marca='Berlingo/Partner'. Resolución de menor a mayor especificidad (gana el último):
 // 1) Compartido (ambas marcas/variantes)  2) Compartido (variante)  3) marca propia  4) marca propia (variante)
 const COD_GRUPO_BP='Berlingo/Partner';
 function clEsBP(marca,modelo){return (marca==='Citroën'&&modelo==='Berlingo')||(marca==='Peugeot'&&modelo==='Partner');}
-async function clLoadCodigos(marca,modelo,variante){
-  clCodigosCache={};
-  if(!marca||!modelo) return;
+// Devuelve un mapa { nombreLowerCase: codigo } resolviendo el catálogo para el vehículo.
+// Para la familia BP combina el grupo compartido + entradas legacy bajo la marca real,
+// de menor a mayor especificidad (gana la más específica).
+async function clFetchCodigos(marca,modelo,variante){
+  const map={};
+  if(!marca||!modelo) return map;
   try{
     if(clEsBP(marca,modelo)){
-      const{data}=await sb.from('codigos_repuestos').select('nombre,codigo,modelo').eq('marca',COD_GRUPO_BP);
-      const orden=['Compartido'];
-      if(variante)orden.push('Compartido ('+variante+')');
-      orden.push(modelo);
-      if(variante)orden.push(modelo+' ('+variante+')');
-      orden.forEach(scope=>{(data||[]).filter(c=>c.modelo===scope).forEach(c=>{clCodigosCache[c.nombre.toLowerCase()]=c.codigo;});});
+      const{data}=await sb.from('codigos_repuestos').select('nombre,codigo,marca,modelo').in('marca',[COD_GRUPO_BP,marca]);
+      const rank=c=>{
+        if(c.marca===COD_GRUPO_BP){
+          if(c.modelo==='Compartido')return 1;
+          if(variante&&c.modelo==='Compartido ('+variante+')')return 2;
+          if(c.modelo===modelo)return 3;
+          if(variante&&c.modelo===modelo+' ('+variante+')')return 4;
+          return 0;
+        }
+        if(c.modelo===modelo)return 5;                                  // legacy: marca real, modelo base
+        if(variante&&c.modelo===modelo+' ('+variante+')')return 6;      // legacy: marca real + variante
+        return 0;
+      };
+      (data||[]).filter(c=>rank(c)>0).sort((a,b)=>rank(a)-rank(b)).forEach(c=>{map[clNorm(c.nombre)]=c.codigo;});
     }else{
       const{data}=await sb.from('codigos_repuestos').select('nombre,codigo').eq('marca',marca).eq('modelo',modelo);
-      (data||[]).forEach(c=>{clCodigosCache[c.nombre.toLowerCase()]=c.codigo;});
+      (data||[]).forEach(c=>{map[clNorm(c.nombre)]=c.codigo;});
     }
   }catch(e){}
+  return map;
 }
+async function clLoadCodigos(marca,modelo,variante){
+  clCodigosCache=await clFetchCodigos(marca,modelo,variante);
+  clAplicarCodigosAReps();
+}
+// Rellena el código de los repuestos ya agregados que aún no lo tengan, usando el caché.
+function clAplicarCodigosAReps(){
+  let cambio=false;
+  clFst.repuestos=clFst.repuestos.map(r=>{
+    const nr=normRep(r);
+    if(!nr.codigo){ const c=clCodigosCache[clNorm(nr.nombre)]; if(c){ cambio=true; return {...nr,codigo:c}; } }
+    return nr;
+  });
+  if(cambio){ clRenderReps(); clAutoSave(); }
+}
+// Recarga el catálogo según la marca/modelo/variante actuales del formulario.
+function clReloadCodigos(){
+  const marcaVal=document.getElementById('cl-marca')?.value||'';
+  const marca=marcaVal==='Otra'?(document.getElementById('cl-otra-marca')?.value||''):marcaVal;
+  const modeloVal=document.getElementById('cl-modelo')?.value||'';
+  const modelo=modeloVal==='Otro'?(document.getElementById('cl-otro-modelo')?.value||''):modeloVal;
+  clLoadCodigos(marca,modelo,clFst.variante||'');
+}
+window.clReloadCodigos=clReloadCodigos;
 async function clSaveCodigos(marca,modelo,variante){
   if(!marca||!modelo) return;
   const nuevos=clFst.repuestos.map(normRep).filter(r=>r.codigo&&r.codigo.trim());
@@ -1767,7 +1805,7 @@ function clRenderReps(){
 }
 window.clAddTrabajo=function(){const inp=document.getElementById('cl-trab-input');const v=inp.value.trim();if(v&&!clFst.trabajos.includes(v)){clFst.trabajos.push(v);clRenderWorking();clAutoSave();}inp.value='';}
 window.clRemoveTrabajo=function(i){clFst.trabajos.splice(i,1);clRenderWorking();clAutoSave();}
-window.clAddRepuesto=function(){const inp=document.getElementById('cl-rep-input');const codInp=document.getElementById('cl-rep-codigo');const val=inp.value.trim();const cod=codInp?codInp.value.trim():'';if(val&&!clFst.repuestos.some(r=>normRep(r).nombre.toLowerCase()===val.toLowerCase())){clFst.repuestos.push({nombre:val,origen:'GAMA',codigo:cod});clRenderReps();clAutoSave();}inp.value='';if(codInp)codInp.value='';}
+window.clAddRepuesto=function(){const inp=document.getElementById('cl-rep-input');const codInp=document.getElementById('cl-rep-codigo');const val=inp.value.trim();const cod=(codInp?codInp.value.trim():'')||clCodigosCache[clNorm(val)]||'';if(val&&!clFst.repuestos.some(r=>normRep(r).nombre.toLowerCase()===val.toLowerCase())){clFst.repuestos.push({nombre:val,origen:'GAMA',codigo:cod});clRenderReps();clAutoSave();}inp.value='';if(codInp)codInp.value='';}
 window.clRemoveRepuesto=function(i){clFst.repuestos.splice(i,1);clRenderReps();clAutoSave();}
 
 function clRenderSummary(){
@@ -1835,9 +1873,15 @@ window.generarExcelInline=async function(){
   const btn=document.getElementById('pd-btn-excel');
   if(btn){btn.textContent='Generando...';btn.disabled=true;}
   try{
+    // Red de seguridad: resuelve códigos faltantes desde el catálogo aunque no se hayan adjuntado al editar.
+    const codMap=await clFetchCodigos(v.marca||'',v.modelo||'',v.variante||'');
+    const repsGama=(v.repuestos||[]).map(normRep).filter(r=>r.origen==='GAMA').map(r=>{
+      const codigo=r.codigo||codMap[clNorm(r.nombre)]||'';
+      return codigo?r.nombre+' ['+codigo+']':r.nombre;
+    });
     const res=await fetch('https://excel-server-dbt.onrender.com/generar-excel',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({patente:v.patente||'',marca:v.marca||'',modelo:v.modelo||'',anio:v.anio||null,km:v.km||null,combustible:v.combustible||null,trabajos:v.trabajos||[],repuestos:(v.repuestos||[]).map(normRep).filter(r=>r.origen==='GAMA').map(r=>r.codigo?r.nombre+' ['+r.codigo+']':r.nombre),observaciones:buildObsFromVehicle(v)||''})
+      body:JSON.stringify({patente:v.patente||'',marca:v.marca||'',modelo:v.modelo||'',anio:v.anio||null,km:v.km||null,combustible:v.combustible||null,trabajos:v.trabajos||[],repuestos:repsGama,observaciones:buildObsFromVehicle(v)||''})
     });
     if(!res.ok)throw new Error('Error servidor: '+res.status);
     const blob=await res.blob();
