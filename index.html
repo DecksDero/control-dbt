@@ -1561,7 +1561,7 @@ window.abrirChecklistInline=function(){
     if(!Array.from(modeloSel.options).some(o=>o.value===v.modelo)&&v.modelo!=='Otro'&&v.marca&&v.marca!=='Otra'){clSaveCustomBrandModel(v.marca,v.modelo);clUpdateModelos();}
     modeloSel.value=v.modelo;clCheckOtroModelo();
   }
-  clLoadCodigos(v.marca||'',v.modelo||'');
+  clLoadCodigos(v.marca||'',v.modelo||'',v.variante||'');
   clSetFuelVal(clFst.combustible);
   if(clFst.parabrisas)clSetPBVal(clFst.parabrisas);
   if(clFst.tapiz)clSetTapizVal(clFst.tapiz);
@@ -1701,7 +1701,7 @@ window.clSetLucesTexto=function(val){clFst.luces=val;clAutoSave();}
 function clSetVarianteVal(val){const n=document.getElementById('cl-variante-Nuevo');const v=document.getElementById('cl-variante-Viejo');if(n)n.className='cl-tog-opt'+(val==='Nuevo'?' ok':'');if(v)v.className='cl-tog-opt'+(val==='Viejo'?' ok':'');}
 window.clSetVariante=function(val){clFst.variante=val;clSetVarianteVal(val);clAutoSave();}
 window.clBuscarCodigo=function(){const v=document.getElementById('cl-rep-input').value.trim().toLowerCase();const ci=document.getElementById('cl-rep-codigo');if(!v||ci?.value) return;const c=clCodigosCache[v];if(c)ci.value=c;};
-async function clLoadCodigos(marca,modelo){clCodigosCache={};if(!marca||!modelo) return;try{const{data}=await sb.from('codigos_repuestos').select('nombre,codigo').eq('marca',marca).eq('modelo',modelo);(data||[]).forEach(c=>{clCodigosCache[c.nombre.toLowerCase()]=c.codigo;});}catch(e){}}
+async function clLoadCodigos(marca,modelo,variante){clCodigosCache={};if(!marca||!modelo) return;try{const modelos=[modelo];if(variante)modelos.push(modelo+' ('+variante+')');const{data}=await sb.from('codigos_repuestos').select('nombre,codigo,modelo').eq('marca',marca).in('modelo',modelos);(data||[]).filter(c=>c.modelo===modelo).forEach(c=>{clCodigosCache[c.nombre.toLowerCase()]=c.codigo;});(data||[]).filter(c=>c.modelo!==modelo).forEach(c=>{clCodigosCache[c.nombre.toLowerCase()]=c.codigo;});}catch(e){}}
 async function clSaveCodigos(marca,modelo){if(!marca||!modelo) return;const nuevos=clFst.repuestos.map(normRep).filter(r=>r.codigo&&r.codigo.trim());if(!nuevos.length) return;try{await sb.from('codigos_repuestos').upsert(nuevos.map(r=>({marca,modelo,nombre:r.nombre,codigo:r.codigo})),{onConflict:'marca,modelo,nombre'});nuevos.forEach(r=>{clCodigosCache[r.nombre.toLowerCase()]=r.codigo;});}catch(e){console.warn('codigos:',e.message);}}
 
 function clRenderAccGrid(){
