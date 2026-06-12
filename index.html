@@ -1738,8 +1738,14 @@ async function clFetchCodigos(marca,modelo,variante){
   }catch(e){}
   return map;
 }
+// Token de secuencia: si se dispara otra carga mientras esta espera la BD, descarta el resultado viejo.
+// (Evita que una carga transitoria —p.ej. el modelo por defecto 'Partner' al elegir Peugeot— pise el caché correcto.)
+let clCodigosReq=0;
 async function clLoadCodigos(marca,modelo,variante){
-  clCodigosCache=await clFetchCodigos(marca,modelo,variante);
+  const myReq=++clCodigosReq;
+  const map=await clFetchCodigos(marca,modelo,variante);
+  if(myReq!==clCodigosReq) return; // ya hay una carga más nueva → este resultado quedó obsoleto
+  clCodigosCache=map;
   clAplicarCodigosAReps();
 }
 // Rellena el código de los repuestos ya agregados que aún no lo tengan, usando el caché.
