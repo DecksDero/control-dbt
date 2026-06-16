@@ -834,6 +834,8 @@ const CL_MODELOS={
   'Ford':['F-150','Ranger','Escape','Transit','Fiesta','Otro'],
   'Renault':['Kangoo','Duster','Logan','Sandero','Master','Trafic','Otro'],
   'Mitsubishi':['L200','Outlander','ASX','Galant','Canter','Otro'],
+  'SsangYong':['Tivoli','Rexton','Korando','Musso','Actyon','Otro'],
+  'Fiat':['Strada','Toro','Punto','Cronos','Ducato','Otro'],
   'Otra':['Otro']
 };
 const CL_STEPS=4;
@@ -867,17 +869,21 @@ function clGetMergedModelos(){
     if(!merged[m])merged[m]=[];
     arr.forEach(x=>{if(!merged[m].includes(x))merged[m].push(x);});
   });
-  Object.keys(merged).forEach(m=>{if(!merged[m].includes('Otro'))merged[m].push('Otro');});
+  Object.keys(merged).forEach(m=>{
+    merged[m]=merged[m].filter(x=>x!=='Otro').sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})); // alfabético
+    merged[m].push('Otro'); // "Otro" siempre al final
+  });
   return merged;
 }
 function clPopulateMarcas(){
   const sel=document.getElementById('cl-marca');if(!sel)return;
   const prev=sel.value;
-  const fixed=['Citroën','Peugeot','Renault','Volkswagen','Toyota','Nissan','Hyundai','Kia','Chevrolet','Ford','Mitsubishi'];
-  const custom=Object.keys(clLoadCustomModelos()).filter(b=>!fixed.includes(b)&&b!=='Otra').sort();
+  const fixed=['Citroën','Peugeot','Renault','Volkswagen','Toyota','Nissan','Hyundai','Kia','Chevrolet','Ford','Mitsubishi','Fiat','SsangYong'];
+  const custom=Object.keys(clLoadCustomModelos()).filter(b=>b!=='Otra');
+  const todas=[...new Set([...fixed,...custom])].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})); // alfabético (acentos/may.-insensible)
   sel.innerHTML='<option value="">Seleccionar...</option>';
-  [...fixed,...custom].forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;sel.appendChild(o);});
-  const otra=document.createElement('option');otra.value='Otra';otra.textContent='Otra';sel.appendChild(otra);
+  todas.forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;sel.appendChild(o);});
+  const otra=document.createElement('option');otra.value='Otra';otra.textContent='Otra';sel.appendChild(otra); // "Otra" siempre al final
   if(prev)sel.value=prev;
 }
 
