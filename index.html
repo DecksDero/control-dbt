@@ -856,11 +856,46 @@ function activarPanel(id){
 
 // Custom models (shared localStorage with Presupuestos app)
 function clLoadCustomModelos(){try{return JSON.parse(localStorage.getItem('dbt_custom_modelos')||'{}');}catch(e){return{};}}
+// Marca fija (canónica) que coincide con `m` ignorando mayúsculas/acentos, o null si es genuinamente nueva.
+function clCanonMarca(m){ if(!m)return null; return Object.keys(CL_MODELOS).find(x=>x.toLowerCase()===m.toLowerCase())||null; }
 function clSaveCustomBrandModel(marca,modelo){
   if(!marca||marca==='Otra')return;
-  const c=clLoadCustomModelos();if(!c[marca])c[marca]=[];
-  if(modelo&&modelo!=='Otro'&&!c[marca].includes(modelo))c[marca].push(modelo);
+  const c=clLoadCustomModelos();
+  const canon=clCanonMarca(marca);
+  if(canon){
+    // La marca ya es fija → NO crear una marca personalizada duplicada (evita "Ssangyong" vs "SsangYong").
+    // Solo se guarda el modelo si es realmente nuevo (no está entre los fijos ni repetido por mayúsculas).
+    if(modelo&&modelo!=='Otro'){
+      const fijos=(CL_MODELOS[canon]||[]).map(x=>x.toLowerCase());
+      if(!fijos.includes(modelo.toLowerCase())){
+        if(!c[canon])c[canon]=[];
+        if(!c[canon].some(x=>x.toLowerCase()===modelo.toLowerCase()))c[canon].push(modelo);
+        localStorage.setItem('dbt_custom_modelos',JSON.stringify(c));
+      }
+    }
+    return;
+  }
+  // Marca genuinamente nueva: reutiliza la clave existente si solo difiere en mayúsculas.
+  const key=Object.keys(c).find(x=>x.toLowerCase()===marca.toLowerCase())||marca;
+  if(!c[key])c[key]=[];
+  if(modelo&&modelo!=='Otro'&&!c[key].some(x=>x.toLowerCase()===modelo.toLowerCase()))c[key].push(modelo);
   localStorage.setItem('dbt_custom_modelos',JSON.stringify(c));
+}
+// Limpia duplicados ya guardados: marcas personalizadas que coinciden con una fija (migra sus modelos propios y borra la clave).
+function clPruneCustomModelos(){
+  try{
+    const c=clLoadCustomModelos();let changed=false;
+    Object.keys(c).forEach(marca=>{
+      const canon=clCanonMarca(marca);if(!canon)return; // marca realmente custom → dejar
+      const fijos=(CL_MODELOS[canon]||[]).map(x=>x.toLowerCase());
+      const propios=(c[marca]||[]).filter(x=>x&&x!=='Otro'&&!fijos.includes(x.toLowerCase()));
+      if(marca!==canon){
+        if(propios.length){c[canon]=c[canon]||[];propios.forEach(p=>{if(!c[canon].some(x=>x.toLowerCase()===p.toLowerCase()))c[canon].push(p);});}
+        delete c[marca];changed=true;
+      }else if(propios.length!==(c[marca]||[]).length){c[marca]=propios;changed=true;}
+    });
+    if(changed)localStorage.setItem('dbt_custom_modelos',JSON.stringify(c));
+  }catch(e){}
 }
 function clGetMergedModelos(){
   const custom=clLoadCustomModelos();const merged={};
@@ -877,10 +912,14 @@ function clGetMergedModelos(){
 }
 function clPopulateMarcas(){
   const sel=document.getElementById('cl-marca');if(!sel)return;
+  clPruneCustomModelos(); // limpia marcas custom que duplican una fija (p.ej. "Ssangyong" vs "SsangYong")
   const prev=sel.value;
   const fixed=['Citroën','Peugeot','Renault','Volkswagen','Toyota','Nissan','Hyundai','Kia','Chevrolet','Ford','Mitsubishi','Fiat','SsangYong'];
   const custom=Object.keys(clLoadCustomModelos()).filter(b=>b!=='Otra');
-  const todas=[...new Set([...fixed,...custom])].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})); // alfabético (acentos/may.-insensible)
+  // dedupe insensible a mayúsculas/acentos (la fija/canónica gana porque va primero)
+  const seen=new Set(),todas=[];
+  [...fixed,...custom].forEach(b=>{const k=b.toLowerCase();if(!seen.has(k)){seen.add(k);todas.push(b);}});
+  todas.sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));
   sel.innerHTML='<option value="">Seleccionar...</option>';
   todas.forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;sel.appendChild(o);});
   const otra=document.createElement('option');otra.value='Otra';otra.textContent='Otra';sel.appendChild(otra); // "Otra" siempre al final
