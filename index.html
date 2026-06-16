@@ -494,6 +494,10 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
       <label>Ingresa como garantía</label>
       <button type="button" id="iGarantia" data-v="0" onclick="toggleGarantia()" style="padding:7px 18px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s">No</button>
     </div>
+    <div class="frow" style="align-items:center">
+      <label>Es de un particular</label>
+      <button type="button" id="iParticular" data-v="0" onclick="toggleParticular()" style="padding:7px 18px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s">No</button>
+    </div>
     <button id="btnImport" onclick="showPanel('import')" style="display:none;width:100%;padding:10px;border:1px dashed var(--border2);border-radius:var(--radius-sm);background:transparent;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:14px">Importar datos históricos</button>
     <button class="big-btn btn-green" onclick="saveIngreso()">Registrar ingreso</button>
   </div>
@@ -539,19 +543,8 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
     <div class="status-row-inline" id="pd-status-row"></div>
     <div class="section-title">Datos del vehículo</div>
     <div class="info-grid-2" id="pd-info-grid"></div>
-    <div id="pd-reps-section" style="display:none">
-      <div class="section-title" style="margin-top:14px">Trabajos de reparación</div>
-      <div class="tag-wrap" id="pd-trabajos" style="margin-bottom:12px"></div>
-      <div class="section-title">Repuestos</div>
-      <div class="tag-wrap" id="pd-repuestos" style="margin-bottom:8px"></div>
-      <div id="pd-rep-actions"></div>
-    </div>
-    <div id="pd-obs-section" style="display:none">
-      <div class="section-title" style="margin-top:14px">Observaciones</div>
-      <div class="obs-box-inline" id="pd-obs" style="margin-bottom:12px"></div>
-    </div>
-    <button class="big-btn btn-dark" id="pd-btn-checklist" onclick="abrirChecklistInline()" style="margin-top:16px">Completar checklist</button>
-    <button class="big-btn" id="pd-btn-excel" onclick="generarExcelInline()" style="display:none;margin-top:10px;background:var(--green);color:#fff">Descargar Excel</button>
+    <div class="section-title" style="margin-top:14px">Presupuestos</div>
+    <div id="pd-presupuestos"></div>
   </div>
 
   <!-- PANEL CHECKLIST FORM -->
@@ -771,7 +764,7 @@ const SUPA_KEY = 'sb_publishable_tDwUhDHFTQUgQ78eFsL6Rw_h9_qKFXO';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ⬆️ Sube esta fecha cada vez que se publique un cambio, para confirmar que la versión nueva ya cargó.
-const APP_VERSION='2026-06-12';
+const APP_VERSION='2026-06-15';
 { const _v=document.getElementById('appVer'); if(_v) _v.textContent='Actualizado '+APP_VERSION.split('-').reverse().join('-'); }
 
 const fbApp = initializeApp({
@@ -847,6 +840,7 @@ const CL_STEPS=4;
 let supavehiculos={};
 let presupTab='pendiente';
 let clCurrentPatente=null;
+let clPresupIdx=0; // presupuesto que se está editando (0 = principal/top-level, 1+ = extras)
 let clStep=0;
 let clFst={combustible:0,parabrisas:'',tapiz:'',luces:'',variante:'',trabajos:[],repuestos:[],accesorios:{},accesoriosQty:{}};
 let clCodigosCache={};
@@ -898,7 +892,8 @@ async function loadSupavehiculos(){
       marca:cl?.marca||'',modelo:cl?.modelo||'',anio:cl?.anio||null,km:cl?.km||null,
       combustible:cl?.combustible||0,parabrisas:cl?.parabrisas||'',tapiz:cl?.tapiz||'',luces:cl?.luces||'',variante:cl?.variante||'',
       accesorios:cl?.accesorios||{},accesoriosQty:cl?.accesoriosQty||{},
-      trabajos:cl?.trabajos||[],repuestos:cl?.repuestos||[],notas:cl?.notas||'',observaciones:cl?.observaciones||''
+      trabajos:cl?.trabajos||[],repuestos:cl?.repuestos||[],notas:cl?.notas||'',observaciones:cl?.observaciones||'',
+      presupuestosExtra:Array.isArray(cl?.presupuestos)?cl.presupuestos:[] // presupuestos 2+ (mismo auto, distintos trabajos/repuestos)
     };
   });
 }
@@ -1087,6 +1082,8 @@ window.showPanel = function(name){
     if(g){g.dataset.v='0';g.textContent='No';g.style.background='';g.style.color='';g.style.borderColor='';}
     const gg=document.getElementById('iGarantia');
     if(gg){gg.dataset.v='0';gg.textContent='No';gg.style.background='';gg.style.color='';gg.style.borderColor='';}
+    const gp=document.getElementById('iParticular');
+    if(gp){gp.dataset.v='0';gp.textContent='No';gp.style.background='';gp.style.color='';gp.style.borderColor='';}
   }
   if(name==='salida'){document.getElementById('salidaSearch').value='';document.getElementById('salidaConfirm').innerHTML='';salidaSelectedId=null;renderSalidaList('');}
   if(name==='pendientes'){document.getElementById('bnav-pendientes').classList.add('active');renderPendientes();}
@@ -1253,6 +1250,16 @@ window.toggleGarantia = function(){
   b.style.borderColor=on?'var(--blue-text)':'var(--border)';
 }
 
+window.toggleParticular = function(){
+  const b=document.getElementById('iParticular');
+  const on=b.dataset.v!=='1';
+  b.dataset.v=on?'1':'0';
+  b.textContent=on?'✓ Sí':'No';
+  b.style.background=on?'#EDE9FE':'var(--surface2)';
+  b.style.color=on?'#6D28D9':'var(--text2)';
+  b.style.borderColor=on?'#6D28D9':'var(--border)';
+}
+
 window.saveIngreso = async function(){
   const pat=document.getElementById('iPatente').value.trim().toUpperCase();
   const tal=document.getElementById('iTaller').value;
@@ -1260,18 +1267,21 @@ window.saveIngreso = async function(){
   const obs=document.getElementById('iObs').value.trim();
   const grua=document.getElementById('iGrua').dataset.v==='1';
   const garantia=document.getElementById('iGarantia').dataset.v==='1';
+  const particular=document.getElementById('iParticular').dataset.v==='1';
   if(!pat||!ing){showToast('Patente y fecha son obligatorias','err');return;}
   const {data:exists}=await sb.from('vehiculos').select('id').eq('patente',pat).is('salida',null).maybeSingle();
   if(exists){showToast(pat+' ya está activo en taller','err');return;}
-  const {error}=await sb.from('vehiculos').insert({patente:pat,taller:tal,ingreso:ing,obs:obs||null,grua:grua||null,garantia:garantia||null});
+  const {error}=await sb.from('vehiculos').insert({patente:pat,taller:tal,ingreso:ing,obs:obs||null,grua:grua||null,garantia:garantia||null,particular:particular||null});
   if(error){showToast('Error al guardar','err');return;}
-  showToast(pat+' registrado en '+tal+(grua?' · en grúa':'')+(garantia?' · garantía':''),'ok');
+  showToast(pat+' registrado en '+tal+(grua?' · en grúa':'')+(garantia?' · garantía':'')+(particular?' · particular':''),'ok');
   document.getElementById('iPatente').value='';
   document.getElementById('iObs').value='';
   const g=document.getElementById('iGrua');
   g.dataset.v='0';g.textContent='No';g.style.background='';g.style.color='';g.style.borderColor='';
   const gg=document.getElementById('iGarantia');
   gg.dataset.v='0';gg.textContent='No';gg.style.background='';gg.style.color='';gg.style.borderColor='';
+  const gp=document.getElementById('iParticular');
+  gp.dataset.v='0';gp.textContent='No';gp.style.background='';gp.style.color='';gp.style.borderColor='';
   loadStats();
 }
 
@@ -1288,7 +1298,7 @@ async function renderSalidaList(q){
     <div class="sal-item${salidaSelectedId===v.id?' selected':''}" onclick="selectSalida(${v.id},'${v.patente}','${v.taller}')">
       <div class="sal-left">
         <div class="sal-pat">${v.patente}</div>
-        <div class="sal-sub">Ingresó: ${td(v.ingreso)}${v.garantia?' · ★ Garantía':''}${v.grua?' · 🚛 Grúa':''}${v.fecha_rep_pendiente&&!v.fecha_rep_recibido?' · ⚠ Rep. pendientes':''}</div>
+        <div class="sal-sub">Ingresó: ${td(v.ingreso)}${v.garantia?' · ★ Garantía':''}${v.particular?' · 👤 Particular':''}${v.grua?' · 🚛 Grúa':''}${v.fecha_rep_pendiente&&!v.fecha_rep_recibido?' · ⚠ Rep. pendientes':''}</div>
       </div>
       ${tallerBadge(v.taller)}
     </div>
@@ -1432,34 +1442,52 @@ window.abrirPresupDetalle=function(patente){
   if(v.luces) infoRows.push(['Luces tablero',v.luces]);
   infoRows.push(['Ingreso',v.ingreso||'—']);
   document.getElementById('pd-info-grid').innerHTML=infoRows.map(([l,val])=>`<div class="info-cell"><div class="info-cell-label">${l}</div><div class="info-cell-val">${val}</div></div>`).join('');
-  const escHtml=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  const repsec=document.getElementById('pd-reps-section');
-  const trabajos=v.trabajos||[];const repuestos=(v.repuestos||[]).map(normRep);
-  if(trabajos.length||repuestos.length){
-    repsec.style.display='block';
-    document.getElementById('pd-trabajos').innerHTML=trabajos.map(t=>`<span class="rc-tag trabajo">${escHtml(t)}</span>`).join('')||'<span style="color:var(--text3);font-size:13px">Ninguno</span>';
-    const puedeEliminar=window.canWrite&&v.estado==='Presupuesto enviado';
-    const tieneGAMA=repuestos.some(r=>r.origen==='GAMA');
-    document.getElementById('pd-repuestos').innerHTML=repuestos.length
-      ? repuestos.map((r,i)=>{
-          const esNuestro=r.origen==='nuestro';
-          const badge=`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:${esNuestro?'#3b82f6':'#f59e0b'};color:#fff;flex-shrink:0">${esNuestro?'DBT':'GAMA'}</span>`;
-          const btn=puedeEliminar&&!esNuestro?`<button onclick="marcarNuestroRepuesto(${i})" title="Lo pone DBT" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue);padding:0 2px;line-height:1;font-weight:600;white-space:nowrap">✓ DBT</button>`:'';
-          return`<span class="rc-tag" style="display:inline-flex;align-items:center;gap:4px;${esNuestro?'opacity:.55;text-decoration:line-through':''}">${escHtml(r.nombre)}${r.codigo?`<span style="font-size:10px;font-family:monospace;opacity:.65">${escHtml(r.codigo)}</span>`:''}${badge}${btn}</span>`;
-        }).join('')
-      : '<span style="color:var(--text3);font-size:13px">Ninguno</span>';
-    document.getElementById('pd-rep-actions').innerHTML=(puedeEliminar&&tieneGAMA)
-      ? `<button onclick="marcarTodosNuestros()" style="margin-top:6px;padding:5px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer">Todos son DBT — limpiar espera</button>`
-      : '';
-  }else{repsec.style.display='none';}
-  const obs=buildObsFromVehicle(v)||'';const obsec=document.getElementById('pd-obs-section');
-  if(obs){obsec.style.display='block';document.getElementById('pd-obs').textContent=obs;}
-  else{obsec.style.display='none';}
-  const tieneChecklist=!!(v.trabajos?.length||v.repuestos?.length||v.parabrisas);
-  document.getElementById('pd-btn-checklist').textContent=tieneChecklist?'Editar checklist':'Completar checklist';
-  const puedeExcel=['Presupuesto terminado','Presupuesto enviado'].includes(v.estado);
-  document.getElementById('pd-btn-excel').style.display=puedeExcel?'block':'none';
+  const lista=vPresupuestos(v);
+  document.getElementById('pd-presupuestos').innerHTML=
+    lista.map((p,idx)=>renderPresupCard(v,p,idx,lista.length)).join('')
+    +`<button class="big-btn btn-dark" onclick="clNuevoPresup()" style="margin-top:14px;opacity:.92">+ Agregar presupuesto</button>`;
   activarPanel('panelPresupDetalle');
+}
+
+// Lista de presupuestos del vehículo: [0]=principal (datos top-level), [1..]=extras (mismo auto, otros trabajos/repuestos)
+function vPresupuestos(v){
+  const base={etiqueta:v.etiqueta1||'',trabajos:v.trabajos||[],repuestos:(v.repuestos||[]).map(normRep),notas:v.notas||''};
+  const extra=(v.presupuestosExtra||[]).map(p=>({etiqueta:p.etiqueta||'',trabajos:p.trabajos||[],repuestos:(p.repuestos||[]).map(normRep),notas:p.notas||''}));
+  return [base,...extra];
+}
+// Observaciones de un presupuesto = partes del vehículo (compartidas) + notas de ese presupuesto
+function buildObsForPresup(v,p){ return buildObsFromVehicle({...v,notas:p.notas||''}); }
+
+function renderPresupCard(v,p,idx,total){
+  const escHtml=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const trabajos=p.trabajos||[];const repuestos=(p.repuestos||[]).map(normRep);
+  const tiene=trabajos.length||repuestos.length;
+  const titulo=`Presupuesto ${idx+1}`+(p.etiqueta?` · ${escHtml(p.etiqueta)}`:'');
+  const puedeExcel=['Presupuesto terminado','Presupuesto enviado'].includes(v.estado)&&tiene;
+  const puedeEliminarReps=window.canWrite&&v.estado==='Presupuesto enviado'&&idx===0; // marcar DBT solo en el principal
+  const tieneGAMA=repuestos.some(r=>r.origen==='GAMA');
+  const trabajosHtml=trabajos.length?trabajos.map(t=>`<span class="rc-tag trabajo">${escHtml(t)}</span>`).join(''):'<span style="color:var(--text3);font-size:13px">Ninguno</span>';
+  const repuestosHtml=repuestos.length?repuestos.map((r,i)=>{
+    const esNuestro=r.origen==='nuestro';
+    const badge=`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:${esNuestro?'#3b82f6':'#f59e0b'};color:#fff;flex-shrink:0">${esNuestro?'DBT':'GAMA'}</span>`;
+    const btn=puedeEliminarReps&&!esNuestro?`<button onclick="marcarNuestroRepuesto(${i})" title="Lo pone DBT" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue);padding:0 2px;line-height:1;font-weight:600;white-space:nowrap">✓ DBT</button>`:'';
+    return`<span class="rc-tag" style="display:inline-flex;align-items:center;gap:4px;${esNuestro?'opacity:.55;text-decoration:line-through':''}">${escHtml(r.nombre)}${r.codigo?`<span style="font-size:10px;font-family:monospace;opacity:.65">${escHtml(r.codigo)}</span>`:''}${badge}${btn}</span>`;
+  }).join(''):'<span style="color:var(--text3);font-size:13px">Ninguno</span>';
+  const obs=buildObsForPresup(v,p);
+  return `<div style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px">
+    <div style="font-weight:700;font-size:15px;margin-bottom:10px">${titulo}</div>
+    <div class="section-title">Trabajos de reparación</div>
+    <div class="tag-wrap" style="margin-bottom:10px">${trabajosHtml}</div>
+    <div class="section-title">Repuestos</div>
+    <div class="tag-wrap" style="margin-bottom:6px">${repuestosHtml}</div>
+    ${(puedeEliminarReps&&tieneGAMA)?`<button onclick="marcarTodosNuestros()" style="margin-bottom:6px;padding:5px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer">Todos son DBT — limpiar espera</button>`:''}
+    ${obs?`<div class="section-title" style="margin-top:8px">Observaciones</div><div class="obs-box-inline">${escHtml(obs)}</div>`:''}
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="big-btn btn-dark" style="flex:1 1 auto" onclick="abrirChecklistInline(${idx})">${tiene?'Editar':'Completar'}</button>
+      ${puedeExcel?`<button class="big-btn" style="flex:1 1 auto;background:var(--green);color:#fff" onclick="generarExcelPresup(${idx})">Excel${idx>0?` (${idx})`:''}</button>`:''}
+      ${idx>0?`<button class="big-btn" style="flex:0 0 auto;background:var(--red-bg);color:var(--red-text)" onclick="clBorrarPresup(${idx})">🗑</button>`:''}
+    </div>
+  </div>`;
 }
 
 window.volverDesdeDetalle=function(){activarPanel('panelPendientes');}
@@ -1533,31 +1561,29 @@ window.cambiarEstadoPresup=async function(estado){
       supavehiculos[pat].fecha_rep_pendiente=updateData.fecha_rep_pendiente;
       statsData=null;
     }
-    document.getElementById('pd-status-row').querySelectorAll('.status-btn-inline').forEach((b,i)=>{
-      b.classList.toggle('active',['Pendiente de datos','Con datos','Presupuesto terminado','Presupuesto enviado'][i]===estado);
-    });
-    const puedeExcel=['Presupuesto terminado','Presupuesto enviado'].includes(estado);
-    document.getElementById('pd-btn-excel').style.display=puedeExcel?'block':'none';
+    abrirPresupDetalle(pat); // re-render: estado + botones de Excel por presupuesto
     showToast('Estado: '+estado,'ok');
   }catch(e){showToast('Error: '+e.message,'err');}
 }
 
 // ── Checklist form ───────────────────────────────────────────────
-window.abrirChecklistInline=function(){
+window.abrirChecklistInline=function(idx){
+  clPresupIdx=idx||0;
   const pat=clCurrentPatente;if(!pat)return;
   const v=supavehiculos[pat];if(!v)return;
+  const p=vPresupuestos(v)[clPresupIdx]||vPresupuestos(v)[0]; // datos del auto compartidos; trabajos/repuestos/notas del slot
   clFst={
     combustible:v.combustible||0,parabrisas:v.parabrisas||'',tapiz:v.tapiz||'',luces:v.luces||'',variante:v.variante||'',
-    trabajos:[...(v.trabajos||[])],repuestos:(v.repuestos||[]).map(normRep),
+    trabajos:[...(p.trabajos||[])],repuestos:(p.repuestos||[]).map(normRep),
     accesorios:{...(v.accesorios||{})},accesoriosQty:{...(v.accesoriosQty||{})}
   };
-  document.getElementById('cl-form-title').textContent=pat;
-  document.getElementById('cl-form-sub').textContent=v.taller||'';
+  document.getElementById('cl-form-title').textContent=pat+(clPresupIdx>0?` · Presup. ${clPresupIdx+1}`:'');
+  document.getElementById('cl-form-sub').textContent=(v.taller||'')+(p.etiqueta?` · ${p.etiqueta}`:'');
   clPopulateMarcas();
   document.getElementById('cl-patente').value=pat;
   document.getElementById('cl-anio').value=v.anio||'';
   document.getElementById('cl-km').value=v.km||'';
-  document.getElementById('cl-obs').value=v.notas||'';
+  document.getElementById('cl-obs').value=p.notas||'';
   if(v.marca){
     const marcaSel=document.getElementById('cl-marca');
     if(!Array.from(marcaSel.options).some(o=>o.value===v.marca)&&v.marca!=='Otra'){clSaveCustomBrandModel(v.marca,'');clPopulateMarcas();}
@@ -1622,27 +1648,60 @@ function clBuildObs(){
   return parts.join(' ');
 }
 
+// Arma el checklist completo desde el formulario, enrutando trabajos/repuestos/notas al slot
+// del presupuesto en edición (clPresupIdx) y conservando los demás presupuestos y los datos del auto.
+function clBuildChecklistObj(){
+  const pat=clCurrentPatente;
+  const marcaVal=document.getElementById('cl-marca')?.value||'';
+  const marca=marcaVal==='Otra'?(document.getElementById('cl-otra-marca')?.value||''):marcaVal;
+  const modeloVal=document.getElementById('cl-modelo')?.value||'';
+  const modelo=modeloVal==='Otro'?(document.getElementById('cl-otro-modelo')?.value||''):modeloVal;
+  const anio=document.getElementById('cl-anio')?.value||'';
+  const km=document.getElementById('cl-km')?.value||'';
+  const notas=document.getElementById('cl-obs')?.value||'';
+  const obsTxt=clBuildObs()||'';
+  const existing=parseChecklist(supavehiculos[pat]?.obs)||{};
+  const extras=Array.isArray(existing.presupuestos)?existing.presupuestos.map(p=>({...p})):[];
+  const cl={
+    marca:marca||'',modelo:modelo||'',anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
+    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',variante:clFst.variante||'',
+    accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
+    trabajos: clPresupIdx===0?(clFst.trabajos||[]):(existing.trabajos||[]),
+    repuestos: clPresupIdx===0?(clFst.repuestos||[]):(existing.repuestos||[]),
+    notas: clPresupIdx===0?notas:(existing.notas||''),
+    observaciones: clPresupIdx===0?obsTxt:(existing.observaciones||''),
+    presupuestos:extras
+  };
+  if(clPresupIdx>0){
+    const i=clPresupIdx-1;
+    extras[i]={etiqueta:(extras[i]&&extras[i].etiqueta)||'',trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],notas,observaciones:obsTxt};
+    cl.presupuestos=extras;
+  }
+  return cl;
+}
+function clEstadoFromChecklist(cl){
+  const has=(cl.trabajos&&cl.trabajos.length)||(cl.repuestos&&cl.repuestos.length)||(cl.presupuestos||[]).some(p=>(p.trabajos&&p.trabajos.length)||(p.repuestos&&p.repuestos.length));
+  return has?'Presupuesto terminado':'Con datos';
+}
+function clApplyClToV(pat,cl){
+  const v=supavehiculos[pat];if(!v)return;
+  Object.assign(v,cl);
+  v.presupuestosExtra=Array.isArray(cl.presupuestos)?cl.presupuestos:[];
+}
+
 async function clSaveChecklist(){
   const pat=clCurrentPatente;if(!pat){showToast('Error: no hay patente','err');return false;}
   const marcaVal=document.getElementById('cl-marca').value;
   const marca=marcaVal==='Otra'?(document.getElementById('cl-otra-marca')?.value||'Otra'):marcaVal;
   const modeloVal=document.getElementById('cl-modelo').value;
   const modelo=modeloVal==='Otro'?(document.getElementById('cl-otro-modelo')?.value||'Otro'):modeloVal;
-  const anio=document.getElementById('cl-anio').value;
-  const km=document.getElementById('cl-km').value;
-  const estado=(clFst.trabajos?.length||clFst.repuestos?.length)?'Presupuesto terminado':'Con datos';
-  const checklist={
-    marca:marca||'',modelo:modelo||'',anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
-    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',variante:clFst.variante||'',
-    accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
-    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],
-    notas:document.getElementById('cl-obs')?.value||'',observaciones:clBuildObs()||''
-  };
-  const obsValue=estado+'||'+JSON.stringify(checklist);
+  const cl=clBuildChecklistObj();
+  const estado=clEstadoFromChecklist(cl);
+  const obsValue=estado+'||'+JSON.stringify(cl);
   try{
     const{error}=await sb.from('vehiculos').update({obs:obsValue}).eq('patente',pat);
     if(error)throw error;
-    if(supavehiculos[pat]){supavehiculos[pat].obs=obsValue;supavehiculos[pat].estado=estado;Object.assign(supavehiculos[pat],checklist);}
+    if(supavehiculos[pat]){supavehiculos[pat].obs=obsValue;supavehiculos[pat].estado=estado;clApplyClToV(pat,cl);}
     if(marcaVal==='Otra'&&marca)clSaveCustomBrandModel(marca,modelo||'');
     else if(modeloVal==='Otro'&&modelo&&marcaVal&&marcaVal!=='Otra')clSaveCustomBrandModel(marcaVal,modelo);
     await clSaveCodigos(marca,modelo,clFst.variante||'');
@@ -1652,31 +1711,69 @@ async function clSaveChecklist(){
 
 function clAutoSave(){
   const pat=clCurrentPatente;if(!pat)return;
-  const marcaVal=document.getElementById('cl-marca')?.value||'';
-  const marca=marcaVal==='Otra'?(document.getElementById('cl-otra-marca')?.value||''):marcaVal;
-  const modeloVal=document.getElementById('cl-modelo')?.value||'';
-  const modelo=modeloVal==='Otro'?(document.getElementById('cl-otro-modelo')?.value||''):modeloVal;
-  const anio=document.getElementById('cl-anio')?.value||'';
-  const km=document.getElementById('cl-km')?.value||'';
+  const cl=clBuildChecklistObj();
   const currentEstado=supavehiculos[pat]?.estado||'Pendiente de datos';
-  const checklist={
-    marca,modelo,anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
-    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',variante:clFst.variante||'',
-    accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
-    trabajos:clFst.trabajos||[],repuestos:clFst.repuestos||[],
-    notas:document.getElementById('cl-obs')?.value||'',observaciones:clBuildObs()
-  };
-  const obsValue=currentEstado+'||'+JSON.stringify(checklist);
+  const obsValue=currentEstado+'||'+JSON.stringify(cl);
   clearTimeout(clAutoSave._timer);
   clAutoSave._timer=setTimeout(async()=>{
     try{
       const{error}=await sb.from('vehiculos').update({obs:obsValue}).eq('patente',pat);
       if(error)throw error;
-      if(supavehiculos[pat])Object.assign(supavehiculos[pat],checklist);
+      clApplyClToV(pat,cl);
     }catch(e){console.warn('autoSave:',e.message);}
   },1200);
 }
 window.clAutoSave=clAutoSave;
+
+// ── Gestión de múltiples presupuestos ──
+async function clSavePresupuestos(pat,extras){
+  const v=supavehiculos[pat];if(!v)return false;
+  const cl=parseChecklist(v.obs)||{};
+  cl.presupuestos=extras;
+  const estado=clEstadoFromChecklist(cl);
+  const obsValue=estado+'||'+JSON.stringify(cl);
+  try{
+    const{error}=await sb.from('vehiculos').update({obs:obsValue}).eq('patente',pat);
+    if(error)throw error;
+    v.obs=obsValue;v.estado=estado;v.presupuestosExtra=extras;
+    return true;
+  }catch(e){showToast('Error: '+e.message,'err');return false;}
+}
+window.clNuevoPresup=async function(){
+  const pat=clCurrentPatente;const v=pat?supavehiculos[pat]:null;if(!v)return;
+  if(window.canWrite===false){showToast('No tienes permiso','err');return;}
+  const etiqueta=(prompt('Etiqueta del nuevo presupuesto (ej: Delantero, Trasero). Opcional:','')||'').trim();
+  const extras=(v.presupuestosExtra||[]).slice();
+  extras.push({etiqueta,trabajos:[],repuestos:[],notas:'',observaciones:''});
+  const ok=await clSavePresupuestos(pat,extras);
+  if(ok){abrirPresupDetalle(pat);abrirChecklistInline(extras.length);}
+}
+window.clBorrarPresup=async function(idx){
+  if(idx<1)return;
+  const pat=clCurrentPatente;const v=pat?supavehiculos[pat]:null;if(!v)return;
+  if(!confirm('¿Eliminar este presupuesto? No se puede deshacer.'))return;
+  const extras=(v.presupuestosExtra||[]).slice();extras.splice(idx-1,1);
+  const ok=await clSavePresupuestos(pat,extras);
+  if(ok){showToast('Presupuesto eliminado','ok');abrirPresupDetalle(pat);}
+}
+window.generarExcelPresup=async function(idx){
+  const pat=clCurrentPatente;const v=pat?supavehiculos[pat]:null;if(!v)return;
+  const lista=vPresupuestos(v);const p=lista[idx];if(!p)return;
+  try{
+    const codMap=await clFetchCodigos(v.marca||'',v.modelo||'',v.variante||'');
+    const repsGama=(p.repuestos||[]).map(normRep).filter(r=>r.origen==='GAMA').map(r=>{const c=r.codigo||codMap[clNorm(r.nombre)]||'';return c?r.nombre+' ['+c+']':r.nombre;});
+    const res=await fetch('https://excel-server-dbt.onrender.com/generar-excel',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({patente:v.patente||'',marca:v.marca||'',modelo:v.modelo||'',anio:v.anio||null,km:v.km||null,combustible:v.combustible||null,trabajos:p.trabajos||[],repuestos:repsGama,observaciones:buildObsForPresup(v,p)||''})
+    });
+    if(!res.ok)throw new Error('Error servidor: '+res.status);
+    const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');
+    a.href=url;a.download=idx===0?`${pat}GAMA.xlsx`:`${pat}GAMA(${idx}).xlsx`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    const n=await autoCrearPedidosRepuestos(v.patente,p.repuestos||[]);
+    showToast('Excel descargado'+(n>0?` · ${n} pedido${n>1?'s':''} creado${n>1?'s':''} en repuestos`:''),'ok');
+    cambiarEstadoPresup('Presupuesto enviado');
+  }catch(e){showToast('Error: '+(e.message||'no se pudo conectar'),'err');}
+}
 
 window.clUpdateModelos=function(){
   const marca=document.getElementById('cl-marca').value;
@@ -1879,31 +1976,7 @@ function buildObsFromVehicle(v){
   return parts.join(' ');
 }
 
-window.generarExcelInline=async function(){
-  const pat=clCurrentPatente;const v=pat?supavehiculos[pat]:null;if(!v)return;
-  const btn=document.getElementById('pd-btn-excel');
-  if(btn){btn.textContent='Generando...';btn.disabled=true;}
-  try{
-    // Red de seguridad: resuelve códigos faltantes desde el catálogo aunque no se hayan adjuntado al editar.
-    const codMap=await clFetchCodigos(v.marca||'',v.modelo||'',v.variante||'');
-    const repsGama=(v.repuestos||[]).map(normRep).filter(r=>r.origen==='GAMA').map(r=>{
-      const codigo=r.codigo||codMap[clNorm(r.nombre)]||'';
-      return codigo?r.nombre+' ['+codigo+']':r.nombre;
-    });
-    const res=await fetch('https://excel-server-dbt.onrender.com/generar-excel',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({patente:v.patente||'',marca:v.marca||'',modelo:v.modelo||'',anio:v.anio||null,km:v.km||null,combustible:v.combustible||null,trabajos:v.trabajos||[],repuestos:repsGama,observaciones:buildObsFromVehicle(v)||''})
-    });
-    if(!res.ok)throw new Error('Error servidor: '+res.status);
-    const blob=await res.blob();
-    const url=URL.createObjectURL(blob);const a=document.createElement('a');
-    a.href=url;a.download=`${pat}GAMA.xlsx`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-    const n=await autoCrearPedidosRepuestos(v.patente, v.repuestos||[]);
-    showToast('Excel descargado'+(n>0?` · ${n} pedido${n>1?'s':''} creado${n>1?'s':''} en repuestos`:''),'ok');
-    cambiarEstadoPresup('Presupuesto enviado');
-  }catch(e){showToast('Error: '+(e.message||'no se pudo conectar'),'err');}
-  if(btn){btn.textContent='Descargar Excel';btn.disabled=false;}
-}
+window.generarExcelInline=function(){ return generarExcelPresup(0); } // compat: presupuesto principal
 
 window.showTaller = async function(taller){
   currentTaller = taller;
@@ -1920,7 +1993,7 @@ window.showTaller = async function(taller){
     <div class="result-card" data-vid="${v.id}">
       <div class="rc-top">
         <span class="rc-pat">${v.patente}</span>
-        <div style="display:flex;gap:6px;align-items:center">${v.garantia?'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue-text)">★ Garantía</span>':''}${v.grua?'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--amber-bg);color:var(--amber-text)">🚛 Grúa</span>':''}${tallerBadge(v.taller)}</div>
+        <div style="display:flex;gap:6px;align-items:center">${v.garantia?'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue-text)">★ Garantía</span>':''}${v.particular?'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#EDE9FE;color:#6D28D9">👤 Particular</span>':''}${v.grua?'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--amber-bg);color:var(--amber-text)">🚛 Grúa</span>':''}${tallerBadge(v.taller)}</div>
       </div>
       <div class="rc-rows">
         <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
