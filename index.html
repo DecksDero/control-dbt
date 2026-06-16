@@ -765,7 +765,8 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ⬆️ Sube esta fecha cada vez que se publique un cambio, para confirmar que la versión nueva ya cargó.
 const APP_VERSION='2026-06-15';
-{ const _v=document.getElementById('appVer'); if(_v) _v.textContent='Actualizado '+APP_VERSION.split('-').reverse().join('-'); }
+const APP_BUILD=2; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
+{ const _v=document.getElementById('appVer'); if(_v) _v.textContent='Actualizado '+APP_VERSION.split('-').reverse().join('-')+' · v'+APP_BUILD; }
 
 const fbApp = initializeApp({
   apiKey: "AIzaSyDS-HbrE9tjMTibbm_bD_FJTfCqsua0xqU",
