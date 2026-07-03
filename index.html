@@ -539,8 +539,10 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
         <div class="d-sub" id="pd-sub">—</div>
       </div>
     </div>
+    <div id="pd-considerar"></div>
     <div class="section-title">Estado</div>
     <div class="status-row-inline" id="pd-status-row"></div>
+    <div id="pd-envio-cliente"></div>
     <div class="section-title">Datos del vehículo</div>
     <div class="info-grid-2" id="pd-info-grid"></div>
     <div class="section-title" style="margin-top:14px">Presupuestos</div>
@@ -560,6 +562,11 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
     <div id="cl-steps" style="padding:14px 16px 16px">
       <!-- PASO 0: Datos vehículo -->
       <div class="cl-step active" id="cl-sf-0">
+        <div class="cl-field" style="margin-bottom:14px;background:var(--amber-bg,#fff7e6);border-radius:var(--radius-sm);padding:10px 12px">
+          <label>📧 A considerar antes del presupuesto (opcional)</label>
+          <textarea id="cl-considerar" placeholder="Ej: contenido del correo de ingreso sobre qué piezas revisar..." oninput="clSetConsiderar(this.value)" style="height:70px;line-height:1.5"></textarea>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Solo referencia interna — nunca aparece en el Excel del presupuesto.</div>
+        </div>
         <div class="cl-grid2">
           <div class="cl-field"><label>Patente</label><input id="cl-patente" placeholder="ABCD-12" style="text-transform:uppercase" oninput="clAutoSave()"></div>
           <div class="cl-field"><label>Año</label><input id="cl-anio" type="number" placeholder="2024" oninput="clAutoSave()"></div>
@@ -584,6 +591,7 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
         <div class="cl-field"><label>Kilometraje</label><input id="cl-km" type="number" placeholder="85000" oninput="clAutoSave()"></div>
         <div class="cl-field"><label>Combustible</label>
           <div class="cl-fuel-row">
+            <div class="cl-fuel-seg" id="cl-fuel-0" onclick="clSetFuel(0)">0</div>
             <div class="cl-fuel-seg" id="cl-fuel-1" onclick="clSetFuel(1)">1/4</div>
             <div class="cl-fuel-seg" id="cl-fuel-2" onclick="clSetFuel(2)">2/4</div>
             <div class="cl-fuel-seg" id="cl-fuel-3" onclick="clSetFuel(3)">3/4</div>
@@ -764,8 +772,8 @@ const SUPA_KEY = 'sb_publishable_tDwUhDHFTQUgQ78eFsL6Rw_h9_qKFXO';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ⬆️ Sube esta fecha cada vez que se publique un cambio, para confirmar que la versión nueva ya cargó.
-const APP_VERSION='2026-06-15';
-const APP_BUILD=2; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
+const APP_VERSION='2026-07-03';
+const APP_BUILD=5; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
 { const _v=document.getElementById('appVer'); if(_v) _v.textContent='Actualizado '+APP_VERSION.split('-').reverse().join('-')+' · v'+APP_BUILD; }
 
 const fbApp = initializeApp({
@@ -845,7 +853,7 @@ let presupTab='pendiente';
 let clCurrentPatente=null;
 let clPresupIdx=0; // presupuesto que se está editando (0 = principal/top-level, 1+ = extras)
 let clStep=0;
-let clFst={combustible:0,parabrisas:'',tapiz:'',luces:'',variante:'',trabajos:[],repuestos:[],accesorios:{},accesoriosQty:{}};
+let clFst={combustible:0,parabrisas:'',tapiz:'',luces:'',variante:'',aConsiderar:'',trabajos:[],repuestos:[],accesorios:{},accesoriosQty:{}};
 let clCodigosCache={};
 const ALL_PANELS=['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin','panelPresupDetalle','panelChecklist','panelRepuestos','panelFecha'];
 
@@ -936,7 +944,7 @@ async function loadSupavehiculos(){
     supavehiculos[pat]={
       ...v,patente:pat,estado:estadoFromObs(v.obs)||'Pendiente de datos',
       marca:cl?.marca||'',modelo:cl?.modelo||'',anio:cl?.anio||null,km:cl?.km||null,
-      combustible:cl?.combustible||0,parabrisas:cl?.parabrisas||'',tapiz:cl?.tapiz||'',luces:cl?.luces||'',variante:cl?.variante||'',
+      combustible:cl?.combustible||0,parabrisas:cl?.parabrisas||'',tapiz:cl?.tapiz||'',luces:cl?.luces||'',variante:cl?.variante||'',fechaEnvioCliente:cl?.fechaEnvioCliente||'',aConsiderar:cl?.aConsiderar||'',
       accesorios:cl?.accesorios||{},accesoriosQty:cl?.accesoriosQty||{},
       trabajos:cl?.trabajos||[],repuestos:cl?.repuestos||[],notas:cl?.notas||'',observaciones:cl?.observaciones||'',
       presupuestosExtra:Array.isArray(cl?.presupuestos)?cl.presupuestos:[] // presupuestos 2+ (mismo auto, distintos trabajos/repuestos)
@@ -1174,7 +1182,7 @@ window.doSearch = async function(){
         <span class="rc-pat">${v.patente}</span>
         ${v.perdida_total?'<span class="badge b-na">Pérdida total</span>':v.salida?'<span class="badge b-salida">Retirado</span>':'<span class="badge b-activo">En taller</span>'}
       </div>
-      ${vehInfo?`<div class="rc-veh-info">${escHtml(vehInfo)}</div>`:''}
+      ${vehInfo?`<div class="rc-veh-info">${escHtml(vehInfo)}${(cl&&clEsBP(cl.marca,cl.modelo)&&cl.variante)?` <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue-text)">${escHtml(cl.variante)}</span>`:''}</div>`:''}
       <div class="rc-rows">
         <div class="rc-row"><span>Taller</span>${tallerBadge(v.taller)}</div>
         <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
@@ -1458,7 +1466,7 @@ function renderPresupList(list){
     return `
       <div class="result-card" style="cursor:pointer" onclick="abrirPresupDetalle('${v.patente}')">
         <div class="rc-top"><span class="rc-pat">${v.patente}</span>${tallerBadge(v.taller)}</div>
-        ${vehInfo?`<div class="rc-veh-info">${escHtml(vehInfo)}</div>`:''}
+        ${vehInfo?`<div class="rc-veh-info">${escHtml(vehInfo)}${(clEsBP(v.marca,v.modelo)&&v.variante)?` <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue-text)">${escHtml(v.variante)}</span>`:''}</div>`:''}
         <div class="rc-rows">
           <div class="rc-row"><span>Ingreso</span><span>${td(v.ingreso)}</span></div>
           <div class="rc-row"><span>Días en taller</span><span style="font-weight:600;color:var(--blue)">${diasEnTaller(v.ingreso,null)} días</span></div>
@@ -1475,11 +1483,18 @@ window.abrirPresupDetalle=function(patente){
   clCurrentPatente=pat;
   document.getElementById('pd-patente').textContent=pat;
   document.getElementById('pd-sub').textContent=[v.marca,v.modelo,v.anio].filter(Boolean).join(' ')||'Sin datos';
+  const sinPresupTerminado=!['Presupuesto terminado','Presupuesto enviado'].includes(v.estado);
+  document.getElementById('pd-considerar').innerHTML=(sinPresupTerminado&&v.aConsiderar)
+    ?`<div style="background:var(--amber-bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:12px;margin-bottom:2px">📧 A considerar antes del presupuesto</div>
+        <div style="font-size:13px;white-space:pre-wrap">${v.aConsiderar.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
+      </div>`:'';
   const ESTADOS_P=['Pendiente de datos','Con datos','Presupuesto terminado','Presupuesto enviado'];
   const statusLabels={'Pendiente de datos':'Sin datos','Con datos':'Con datos','Presupuesto terminado':'Terminado','Presupuesto enviado':'Enviado'};
   document.getElementById('pd-status-row').innerHTML=ESTADOS_P.map(e=>`
     <button class="status-btn-inline ${v.estado===e?'active':''}" onclick="cambiarEstadoPresup('${e}')">${statusLabels[e]||e}</button>
   `).join('');
+  renderEnvioCliente(v);
   const infoRows=[
     ['Taller',v.taller||'—'],['KM',v.km?Number(v.km).toLocaleString('es-CL')+' km':'—'],
     ['Combustible',v.combustible?v.combustible+'/4':'—'],['Parabrisas',v.parabrisas||'—'],
@@ -1612,6 +1627,46 @@ window.cambiarEstadoPresup=async function(estado){
   }catch(e){showToast('Error: '+e.message,'err');}
 }
 
+// ── Fecha de envío del presupuesto al cliente (distinta de "Presupuesto enviado" = enviado a revisión) ──
+// Es una sola fecha por vehículo (no por presupuesto individual), igual que el estado.
+function renderEnvioCliente(v){
+  const puedeMarcar=['Presupuesto terminado','Presupuesto enviado'].includes(v.estado);
+  const el=document.getElementById('pd-envio-cliente');
+  if(!puedeMarcar){el.innerHTML='';return;}
+  el.innerHTML=v.fechaEnvioCliente
+    ?`<div class="rc-row" style="margin-top:8px"><span>Enviado a cliente</span><span>${td(v.fechaEnvioCliente)} <button onclick="editarFechaEnvioCliente()" style="background:none;border:none;cursor:pointer;color:var(--blue);font-size:12px;font-weight:600">✏️ editar</button></span></div>`
+    :`<button class="big-btn btn-dark" style="margin:8px 0" onclick="marcarEnviadoCliente()">✅ Se envió a cliente</button>`;
+}
+window.marcarEnviadoCliente=async function(){ await guardarFechaEnvioClienteVal(today()); }
+window.editarFechaEnvioCliente=function(){
+  const pat=clCurrentPatente;const v=supavehiculos[pat];if(!v)return;
+  document.getElementById('pd-envio-cliente').innerHTML=`
+    <div class="frow" style="margin-top:8px"><label>Fecha envío a cliente</label><input type="date" id="pd-fecha-cliente-input" value="${v.fechaEnvioCliente||today()}"/></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="big-btn btn-dark" style="flex:1 1 auto" onclick="guardarFechaEnvioCliente()">Guardar</button>
+      <button class="big-btn" style="flex:0 0 auto" onclick="renderEnvioCliente(supavehiculos['${pat}'])">Cancelar</button>
+    </div>`;
+}
+window.guardarFechaEnvioCliente=async function(){
+  const fecha=document.getElementById('pd-fecha-cliente-input').value;
+  if(!fecha){showToast('Selecciona una fecha','err');return;}
+  await guardarFechaEnvioClienteVal(fecha);
+}
+async function guardarFechaEnvioClienteVal(fecha){
+  const pat=clCurrentPatente;const v=supavehiculos[pat];if(!v)return;
+  const cl=parseChecklist(v.obs)||{};
+  cl.fechaEnvioCliente=fecha;
+  const estadoActual=v.estado||estadoFromObs(v.obs);
+  const obsValue=estadoActual+'||'+JSON.stringify(cl);
+  try{
+    const{error}=await sb.from('vehiculos').update({obs:obsValue}).eq('patente',pat);
+    if(error)throw error;
+    supavehiculos[pat].obs=obsValue;supavehiculos[pat].fechaEnvioCliente=fecha;
+    renderEnvioCliente(supavehiculos[pat]);
+    showToast('Fecha de envío a cliente guardada','ok');
+  }catch(e){showToast('Error: '+e.message,'err');}
+}
+
 // ── Checklist form ───────────────────────────────────────────────
 window.abrirChecklistInline=function(idx){
   clPresupIdx=idx||0;
@@ -1619,7 +1674,7 @@ window.abrirChecklistInline=function(idx){
   const v=supavehiculos[pat];if(!v)return;
   const p=vPresupuestos(v)[clPresupIdx]||vPresupuestos(v)[0]; // datos del auto compartidos; trabajos/repuestos/notas del slot
   clFst={
-    combustible:v.combustible||0,parabrisas:v.parabrisas||'',tapiz:v.tapiz||'',luces:v.luces||'',variante:v.variante||'',
+    combustible:v.combustible||0,parabrisas:v.parabrisas||'',tapiz:v.tapiz||'',luces:v.luces||'',variante:v.variante||'',aConsiderar:v.aConsiderar||'',
     trabajos:[...(p.trabajos||[])],repuestos:(p.repuestos||[]).map(normRep),
     accesorios:{...(v.accesorios||{})},accesoriosQty:{...(v.accesoriosQty||{})}
   };
@@ -1630,22 +1685,29 @@ window.abrirChecklistInline=function(idx){
   document.getElementById('cl-anio').value=v.anio||'';
   document.getElementById('cl-km').value=v.km||'';
   document.getElementById('cl-obs').value=p.notas||'';
+  document.getElementById('cl-considerar').value=clFst.aConsiderar||'';
+  document.getElementById('cl-otra-marca').value='';
+  document.getElementById('cl-otro-modelo').value='';
+  const marcaSel=document.getElementById('cl-marca');
+  const modeloSel=document.getElementById('cl-modelo');
   if(v.marca){
-    const marcaSel=document.getElementById('cl-marca');
     if(!Array.from(marcaSel.options).some(o=>o.value===v.marca)&&v.marca!=='Otra'){clSaveCustomBrandModel(v.marca,'');clPopulateMarcas();}
     marcaSel.value=v.marca;clUpdateModelos();
+  }else{
+    marcaSel.value='';clUpdateModelos();
   }
   if(v.modelo){
-    const modeloSel=document.getElementById('cl-modelo');
     if(!Array.from(modeloSel.options).some(o=>o.value===v.modelo)&&v.modelo!=='Otro'&&v.marca&&v.marca!=='Otra'){clSaveCustomBrandModel(v.marca,v.modelo);clUpdateModelos();}
     modeloSel.value=v.modelo;clCheckOtroModelo();
+  }else{
+    modeloSel.value='';clCheckOtroModelo();
   }
   clLoadCodigos(v.marca||'',v.modelo||'',v.variante||'');
   clSetFuelVal(clFst.combustible);
-  if(clFst.parabrisas)clSetPBVal(clFst.parabrisas);
-  if(clFst.tapiz)clSetTapizVal(clFst.tapiz);
+  clSetPBVal(clFst.parabrisas||'');
+  clSetTapizVal(clFst.tapiz||'');
   clSetLucesVal(clFst.luces?'Si':'No');
-  if(clFst.luces){const t=document.getElementById('cl-luces-texto');if(t)t.value=clFst.luces;}
+  const lucesTexto=document.getElementById('cl-luces-texto');if(lucesTexto)lucesTexto.value=clFst.luces||'';
   clSetVarianteVal(clFst.variante||'');
   clRenderAccGrid();clRenderWorking();clRenderReps();
   document.querySelector('.bottom-nav').style.display='none';
@@ -1710,12 +1772,13 @@ function clBuildChecklistObj(){
   const extras=Array.isArray(existing.presupuestos)?existing.presupuestos.map(p=>({...p})):[];
   const cl={
     marca:marca||'',modelo:modelo||'',anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
-    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',variante:clFst.variante||'',
+    combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',variante:clFst.variante||'',aConsiderar:clFst.aConsiderar||'',
     accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
     trabajos: clPresupIdx===0?(clFst.trabajos||[]):(existing.trabajos||[]),
     repuestos: clPresupIdx===0?(clFst.repuestos||[]):(existing.repuestos||[]),
     notas: clPresupIdx===0?notas:(existing.notas||''),
     observaciones: clPresupIdx===0?obsTxt:(existing.observaciones||''),
+    fechaEnvioCliente:existing.fechaEnvioCliente||'',
     presupuestos:extras
   };
   if(clPresupIdx>0){
@@ -1840,7 +1903,7 @@ window.clCheckOtroModelo=function(){
   clReloadCodigos();
 }
 
-function clSetFuelVal(n){clFst.combustible=n;for(let i=1;i<=4;i++){const el=document.getElementById('cl-fuel-'+i);if(el)el.classList.toggle('on',i<=n);}}
+function clSetFuelVal(n){clFst.combustible=n;const seg0=document.getElementById('cl-fuel-0');if(seg0)seg0.classList.toggle('on',n===0);for(let i=1;i<=4;i++){const el=document.getElementById('cl-fuel-'+i);if(el)el.classList.toggle('on',n>0&&i<=n);}}
 window.clSetFuel=function(n){clSetFuelVal(n);clAutoSave();}
 function clSetPBVal(val){clFst.parabrisas=val;['OK','Trizado','Picado'].forEach(v=>{const el=document.getElementById('cl-pb-'+v);if(el)el.className='cl-tog-opt'+(v===val?' info':'');});}
 window.clSetPB=function(val){clSetPBVal(val);clAutoSave();}
@@ -1849,6 +1912,7 @@ window.clSetTapiz=function(val){clSetTapizVal(val);clAutoSave();}
 function clSetLucesVal(val){const no=document.getElementById('cl-luces-No');const si=document.getElementById('cl-luces-Si');if(no)no.className='cl-tog-opt'+(val==='No'?' ok':'');if(si)si.className='cl-tog-opt'+(val==='Si'?' warn':'');const row=document.getElementById('cl-luces-texto-row');if(row)row.style.display=val==='Si'?'block':'none';}
 window.clSetLuces=function(val){clSetLucesVal(val);if(val==='No'){clFst.luces='';const t=document.getElementById('cl-luces-texto');if(t)t.value='';}clAutoSave();}
 window.clSetLucesTexto=function(val){clFst.luces=val;clAutoSave();}
+window.clSetConsiderar=function(val){clFst.aConsiderar=val;clAutoSave();}
 function clSetVarianteVal(val){const n=document.getElementById('cl-variante-Nuevo');const v=document.getElementById('cl-variante-Viejo');if(n)n.className='cl-tog-opt'+(val==='Nuevo'?' ok':'');if(v)v.className='cl-tog-opt'+(val==='Viejo'?' ok':'');}
 window.clSetVariante=function(val){clFst.variante=val;clSetVarianteVal(val);clAutoSave();clReloadCodigos();}
 window.clBuscarCodigo=function(){const v=clNorm(document.getElementById('cl-rep-input').value);const ci=document.getElementById('cl-rep-codigo');if(!v||ci?.value) return;const c=clCodigosCache[v];if(c)ci.value=c;};
