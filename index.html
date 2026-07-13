@@ -773,7 +773,7 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ⬆️ Sube esta fecha cada vez que se publique un cambio, para confirmar que la versión nueva ya cargó.
 const APP_VERSION='2026-07-13';
-const APP_BUILD=9; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
+const APP_BUILD=10; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
 { const _v=document.getElementById('appVer'); if(_v) _v.textContent='Actualizado '+APP_VERSION.split('-').reverse().join('-')+' · v'+APP_BUILD; }
 
 const fbApp = initializeApp({
@@ -2200,7 +2200,32 @@ window.confirmarRepRecibidoBodega = async function(id, pat){
 
 let statsData = null; // cache de datos para no volver a consultar al cambiar vista
 let statsPedidos = null; // cache de pedidos (para ranking de repuestos más pedidos)
-let statsVista = 'mensual'; // 'mensual' | 'semanal'
+let statsVista = 'mensual'; // 'mensual' | 'semanal' — toggle de "Entregas por período" y "Vehículos ingresados"
+// Estado del dashboard interactivo "Repuestos por vehículo" (independiente de statsVista):
+let statsRepGran = 'mensual';   // 'mensual' | 'semestral' | 'anual' — granularidad de la serie temporal
+let statsRepMarca = null;       // marca seleccionada (default: la de mayor volumen de pedidos)
+let statsRepModelo = '__TODOS'; // '__TODOS' | nombre de modelo
+let statsRepVariante = '';      // '' = ambas | 'Nuevo' | 'Viejo' (solo aplica a combos Berlingo/Partner)
+
+// Buckets temporales para la serie repuestos-vs-tiempo. Cortes CALENDARIO (no ventana móvil) para
+// semestral/anual: semestre S1=Ene-Jun, S2=Jul-Dic; año = año calendario. Mensual sí es ventana móvil
+// de 12 meses, igual que el toggle principal de entregas.
+function buildRepPeriodos(gran){
+  const now = new Date(); const arr = [];
+  if(gran==='semestral'){
+    const cur = now.getFullYear()*2 + (now.getMonth()<6?0:1); // ordinal de semestre
+    for(let i=5;i>=0;i--){ const ord=cur-i; const y=Math.floor(ord/2); const s=(ord%2)+1;
+      arr.push({label:`${y} S${s}`, count:0, match:ds=>{ const dy=+ds.slice(0,4), dm=+ds.slice(5,7); return dy*2+(dm<=6?0:1)===ord; }}); }
+  } else if(gran==='anual'){
+    for(let i=4;i>=0;i--){ const y=now.getFullYear()-i;
+      arr.push({label:`${y}`, count:0, match:ds=>+ds.slice(0,4)===y}); }
+  } else { // mensual (últimos 12 meses, ventana móvil)
+    for(let i=11;i>=0;i--){ const d=new Date(now.getFullYear(), now.getMonth()-i, 1);
+      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      arr.push({label:d.toLocaleDateString('es-CL',{month:'short',year:'2-digit'}), count:0, match:ds=>ds.slice(0,7)===key}); }
+  }
+  return arr;
+}
 
 async function renderEstadisticas(){
   const cont = document.getElementById('statsExtContent');
@@ -2210,12 +2235,14 @@ async function renderEstadisticas(){
       // Se trae 'obs' completo (no solo el estado) porque la marca del vehículo vive dentro del
       // JSON del checklist embebido en obs ("Estado||{checklist JSON}", campo marca) — decisión de
       // alcance confirmada: aceptamos una consulta más pesada a cambio de la métrica por marca.
-      const {data, error} = await sb.from('vehiculos').select('taller,ingreso,salida,obs,fecha_rep_pendiente,fecha_rep_recibido,rep_origen,salida_pendientes,perdida_total,garantia');
+      const {data, error} = await sb.from('vehiculos').select('patente,taller,ingreso,salida,obs,fecha_rep_pendiente,fecha_rep_recibido,rep_origen,salida_pendientes,perdida_total,garantia');
       if(error) throw error;
       statsData = data || [];
       // Ranking de repuestos más pedidos: se cuentan TODOS los pedidos en cualquier estado
       // (Solicitado/Recibido/Incorrecto/Instalado) — mide demanda total, no consumo confirmado.
-      const {data:peds, error:pErr} = await sb.from('pedidos').select('repuesto');
+      // Se trae patente + fecha_solicitud para cruzar cada pedido con la marca/modelo/variante de su
+      // vehículo (parseada de obs) y para la serie temporal repuestos-vs-tiempo.
+      const {data:peds, error:pErr} = await sb.from('pedidos').select('repuesto,patente,fecha_solicitud');
       if(pErr) throw pErr;
       statsPedidos = peds || [];
     } catch(e){
@@ -2228,6 +2255,7 @@ async function renderEstadisticas(){
 
 function renderEstadisticasVista(){
   const cont = document.getElementById('statsExtContent');
+  const escHtml = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const data = statsData;
   const perdidaTotalCount = data.filter(v=>v.perdida_total).length;
   const garantiasCount    = data.filter(v=>v.garantia).length;
@@ -2299,30 +2327,74 @@ function renderEstadisticasVista(){
 
   const maxP = Math.max(...periodos.map(p=>p.count), 1);
 
-  // --- Vehículos ingresados por marca (dentro de la ventana temporal del toggle) ---
+  // --- Vehículos ingresados por marca + modelo (+variante) — dentro de la ventana del toggle ---
   // La ventana es la misma que la vista principal: últimos 12 meses (mensual) o últimas 12 semanas
-  // (semanal). Se cuenta por fecha de INGRESO. La marca se parsea del checklist embebido en obs.
+  // (semanal). Se cuenta por fecha de INGRESO. Marca/modelo/variante se parsean del checklist en obs.
+  // Los vehículos SIN marca se EXCLUYEN por completo del conteo (no forman una categoría "Sin marca").
+  // Sin límite: se listan todas las combinaciones marca+modelo(+variante) con ≥1 vehículo en la ventana.
   const winStart = statsVista==='mensual' ? `${periodos[0].key}-01` : periodos[0].startStr;
   const winLabel = statsVista==='mensual' ? 'últimos 12 meses' : 'últimas 12 semanas';
   const marcaCount = {};
   data.forEach(v=>{
     if(!v.ingreso || v.ingreso < winStart) return;
-    const marca = (parseChecklist(v.obs)?.marca || '').trim() || 'Sin marca';
-    marcaCount[marca] = (marcaCount[marca]||0) + 1;
+    const cl = parseChecklist(v.obs) || {};
+    const marca = (cl.marca||'').trim();
+    if(!marca) return; // excluido: sin marca no cuenta ni aparece como categoría
+    const modelo = (cl.modelo||'').trim();
+    const variante = clEsBP(marca,modelo) ? (cl.variante||'').trim() : '';
+    const label = `${marca} ${modelo||'(sin modelo)'}${variante?` (${variante})`:''}`;
+    marcaCount[label] = (marcaCount[label]||0) + 1;
   });
   const marcaRanking = Object.entries(marcaCount).sort((a,b)=>b[1]-a[1]);
   const maxMarca = Math.max(...marcaRanking.map(m=>m[1]), 1);
   const totalIngresosWin = marcaRanking.reduce((acc,m)=>acc+m[1], 0);
 
-  // --- Top 10 repuestos más PEDIDOS (todos los estados = demanda total, no consumo confirmado) ---
-  const repCount = {};
-  (statsPedidos||[]).forEach(p=>{
-    const nom = (p.repuesto||'').trim();
-    if(!nom) return;
-    repCount[nom] = (repCount[nom]||0) + 1;
+  // --- Repuestos por vehículo (dashboard interactivo: Partes 3+4) ---
+  // Cada pedido se atribuye a la marca/modelo/variante de su vehículo (patente→obs). Los pedidos de
+  // vehículos SIN marca se excluyen (misma regla que "Vehículos por marca" arriba).
+  const vehByPat = {};
+  data.forEach(v=>{
+    const cl = parseChecklist(v.obs) || {};
+    const marca = (cl.marca||'').trim(), modelo = (cl.modelo||'').trim();
+    const variante = clEsBP(marca,modelo) ? (cl.variante||'').trim() : '';
+    if(v.patente) vehByPat[v.patente.toUpperCase()] = {marca,modelo,variante};
   });
-  const repRanking = Object.entries(repCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const pedInfo = (statsPedidos||[]).map(p=>{
+    const info = vehByPat[(p.patente||'').toUpperCase()];
+    const rep = (p.repuesto||'').trim();
+    if(!info || !info.marca || !rep) return null;
+    return {repuesto:rep, fecha:p.fecha_solicitud||'', marca:info.marca, modelo:info.modelo, variante:info.variante};
+  }).filter(Boolean);
+  // Marcas con pedidos, ordenadas por volumen; default = la de mayor volumen.
+  const marcaPedCount = {};
+  pedInfo.forEach(p=>{ marcaPedCount[p.marca] = (marcaPedCount[p.marca]||0)+1; });
+  const marcasRep = Object.keys(marcaPedCount).sort((a,b)=>marcaPedCount[b]-marcaPedCount[a]);
+  if(!statsRepMarca || !marcasRep.includes(statsRepMarca)) statsRepMarca = marcasRep[0] || '';
+  // Modelos de la marca seleccionada.
+  const modelosRep = [...new Set(pedInfo.filter(p=>p.marca===statsRepMarca).map(p=>p.modelo||'(sin modelo)'))].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));
+  if(statsRepModelo!=='__TODOS' && !modelosRep.includes(statsRepModelo)) statsRepModelo='__TODOS';
+  const selEsBP = statsRepModelo!=='__TODOS' && clEsBP(statsRepMarca, statsRepModelo);
+  if(!selEsBP) statsRepVariante='';
+  const variantesRep = selEsBP ? [...new Set(pedInfo.filter(p=>p.marca===statsRepMarca && p.modelo===statsRepModelo).map(p=>p.variante).filter(Boolean))].sort() : [];
+  // Pedidos que cumplen la selección marca(/modelo/variante).
+  const pedSel = pedInfo.filter(p=>{
+    if(p.marca!==statsRepMarca) return false;
+    if(statsRepModelo!=='__TODOS' && (p.modelo||'(sin modelo)')!==statsRepModelo) return false;
+    if(selEsBP && statsRepVariante && p.variante!==statsRepVariante) return false;
+    return true;
+  });
+  // Serie temporal: nº de pedidos de la selección por período (según granularidad).
+  const repPeriodos = buildRepPeriodos(statsRepGran);
+  pedSel.forEach(p=>{ if(p.fecha){ const per=repPeriodos.find(x=>x.match(p.fecha)); if(per) per.count++; } });
+  const maxRepPer = Math.max(...repPeriodos.map(p=>p.count), 1);
+  // Ranking de repuestos más pedidos DENTRO de la ventana visible (Top 15 de la selección).
+  const repSelCount = {};
+  pedSel.forEach(p=>{ if(p.fecha && repPeriodos.some(x=>x.match(p.fecha))) repSelCount[p.repuesto]=(repSelCount[p.repuesto]||0)+1; });
+  const repRanking = Object.entries(repSelCount).sort((a,b)=>b[1]-a[1]).slice(0,15);
   const maxRep = Math.max(...repRanking.map(r=>r[1]), 1);
+  const totalPedSelWin = repRanking.reduce((acc,r)=>acc+r[1],0);
+  const comboLabel = `${statsRepMarca}${statsRepModelo!=='__TODOS'?` ${statsRepModelo}`:''}${(selEsBP&&statsRepVariante)?` (${statsRepVariante})`:''}` || '—';
+  const granLabel = statsRepGran==='mensual'?'últimos 12 meses':(statsRepGran==='semestral'?'últimos 6 semestres':'últimos 5 años');
 
   cont.innerHTML = `
     <!-- TOGGLE -->
@@ -2433,9 +2505,9 @@ function renderEstadisticasVista(){
       </div>
     </div>
 
-    <!-- VEHÍCULOS INGRESADOS POR MARCA -->
-    <div class="section-title" style="margin-top:24px;margin-bottom:4px">Vehículos ingresados por marca (${winLabel})</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Por fecha de ingreso · ${totalIngresosWin} vehículo${totalIngresosWin===1?'':'s'} en la ventana</div>
+    <!-- VEHÍCULOS INGRESADOS POR MARCA + MODELO -->
+    <div class="section-title" style="margin-top:24px;margin-bottom:4px">Vehículos ingresados por marca y modelo (${winLabel})</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Por fecha de ingreso · marca + modelo (+variante Nuevo/Viejo en Berlingo/Partner) · ${totalIngresosWin} vehículo${totalIngresosWin===1?'':'s'} en la ventana (los sin marca no se cuentan)</div>
     ${marcaRanking.length ? marcaRanking.map(([marca,n])=>{
       const pct = Math.round((n/maxMarca)*100);
       return `
@@ -2450,22 +2522,62 @@ function renderEstadisticasVista(){
         </div>`;
     }).join('') : '<div class="empty" style="padding:12px 0">Sin ingresos en la ventana.</div>'}
 
-    <!-- TOP 10 REPUESTOS MÁS PEDIDOS -->
-    <div class="section-title" style="margin-top:24px;margin-bottom:4px">Top 10 repuestos más pedidos</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Cuenta todos los pedidos en cualquier estado (Solicitado/Recibido/Incorrecto/Instalado) — mide demanda total pedida, no consumo confirmado ni instalados.</div>
+    <!-- REPUESTOS POR VEHÍCULO (dashboard interactivo) -->
+    <div class="section-title" style="margin-top:24px;margin-bottom:4px">Repuestos por vehículo</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Elige marca/modelo (y variante en Berlingo/Partner) para ver su demanda de repuestos en el tiempo. Cuenta todos los pedidos en cualquier estado (demanda total pedida, no consumo confirmado). Se excluyen pedidos de vehículos sin marca.</div>
+    ${marcasRep.length ? `
+    <!-- Selector marca / modelo / variante -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <select onchange="setStatsRepMarca(this.value)" style="flex:1;min-width:140px;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:600">
+        ${marcasRep.map(m=>`<option value="${escHtml(m)}" ${m===statsRepMarca?'selected':''}>${escHtml(m)} (${marcaPedCount[m]})</option>`).join('')}
+      </select>
+      <select onchange="setStatsRepModelo(this.value)" style="flex:1;min-width:140px;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:600">
+        <option value="__TODOS" ${statsRepModelo==='__TODOS'?'selected':''}>Todos los modelos</option>
+        ${modelosRep.map(m=>`<option value="${escHtml(m)}" ${m===statsRepModelo?'selected':''}>${escHtml(m)}</option>`).join('')}
+      </select>
+    </div>
+    ${selEsBP && variantesRep.length ? `
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <button onclick="setStatsRepVariante('')" style="flex:1;padding:7px;border-radius:var(--radius-sm);border:1px solid var(--border);font-size:12px;font-weight:600;cursor:pointer;background:${statsRepVariante===''?'var(--text)':'var(--surface2)'};color:${statsRepVariante===''?'#fff':'var(--text2)'}">Ambas variantes</button>
+      ${variantesRep.map(v=>`<button onclick="setStatsRepVariante('${escHtml(v)}')" style="flex:1;padding:7px;border-radius:var(--radius-sm);border:1px solid var(--border);font-size:12px;font-weight:600;cursor:pointer;background:${statsRepVariante===v?'var(--text)':'var(--surface2)'};color:${statsRepVariante===v?'#fff':'var(--text2)'}">${escHtml(v)}</button>`).join('')}
+    </div>` : ''}
+    <!-- Toggle granularidad -->
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      ${['mensual','semestral','anual'].map(g=>`
+        <button onclick="switchStatsRepGran('${g}')" style="flex:1;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);font-size:12px;font-weight:600;cursor:pointer;text-transform:capitalize;background:${statsRepGran===g?'var(--purple)':'var(--surface2)'};color:${statsRepGran===g?'#fff':'var(--text2)'}">${g}</button>`).join('')}
+    </div>
+    <!-- Serie temporal: pedidos de la selección por período -->
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Repuestos pedidos en el tiempo · <span style="color:var(--purple)">${escHtml(comboLabel)}</span> · ${granLabel}</div>
+    ${repPeriodos.map(p=>{
+      const pct = Math.round((p.count/maxRepPer)*100);
+      const color = p.count===0 ? 'var(--border2)' : 'var(--purple)';
+      return `
+        <div class="hist-bar-wrap">
+          <div class="hist-bar-label">
+            <span style="font-weight:500">${p.label}</span>
+            <span style="font-family:'DM Mono',monospace;font-weight:600;font-size:14px;color:${p.count>0?'var(--text)':'var(--text3)'}">${p.count}</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:3px;height:8px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .4s"></div>
+          </div>
+        </div>`;
+    }).join('')}
+    <!-- Ranking de repuestos más pedidos para la selección (dentro de la ventana visible) -->
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-top:16px;margin-bottom:8px">Repuestos más pedidos · ${escHtml(comboLabel)} · ${granLabel} ${totalPedSelWin?`· ${totalPedSelWin} pedido${totalPedSelWin===1?'':'s'}`:''}</div>
     ${repRanking.length ? repRanking.map(([rep,n],i)=>{
       const pct = Math.round((n/maxRep)*100);
       return `
         <div class="hist-bar-wrap">
           <div class="hist-bar-label">
-            <span style="font-weight:500"><span style="color:var(--text3);font-family:'DM Mono',monospace">${i+1}.</span> ${rep}</span>
+            <span style="font-weight:500"><span style="color:var(--text3);font-family:'DM Mono',monospace">${i+1}.</span> ${escHtml(rep)}</span>
             <span style="font-family:'DM Mono',monospace;font-weight:600;font-size:14px;color:var(--text)">${n}</span>
           </div>
           <div style="background:var(--surface2);border-radius:3px;height:8px;overflow:hidden">
             <div style="height:100%;width:${pct}%;background:var(--amber);border-radius:3px;transition:width .4s"></div>
           </div>
         </div>`;
-    }).join('') : '<div class="empty" style="padding:12px 0">Aún no hay pedidos registrados.</div>'}
+    }).join('') : '<div class="empty" style="padding:12px 0">Sin pedidos para esta selección en la ventana.</div>'}
+    ` : '<div class="empty" style="padding:12px 0">Aún no hay pedidos atribuibles a un vehículo con marca.</div>'}
   `;
 }
 
@@ -2473,6 +2585,13 @@ window.switchStatsVista = function(vista){
   statsVista = vista;
   renderEstadisticasVista();
 }
+
+// Dashboard interactivo "Repuestos por vehículo": setters (inline handlers en <script type="module">
+// deben llamar funciones window.*, no variables module-scope — ver gotcha en CLAUDE.md).
+window.setStatsRepMarca = function(m){ statsRepMarca=m; statsRepModelo='__TODOS'; statsRepVariante=''; renderEstadisticasVista(); }
+window.setStatsRepModelo = function(m){ statsRepModelo=m; statsRepVariante=''; renderEstadisticasVista(); }
+window.setStatsRepVariante = function(v){ statsRepVariante=v; renderEstadisticasVista(); }
+window.switchStatsRepGran = function(g){ statsRepGran=g; renderEstadisticasVista(); }
 
 async function renderReportePreview(){
   const prev = document.getElementById('reportePreview');
