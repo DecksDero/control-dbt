@@ -773,7 +773,7 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ⬆️ Sube esta fecha cada vez que se publique un cambio, para confirmar que la versión nueva ya cargó.
 const APP_VERSION='2026-07-13';
-const APP_BUILD=8; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
+const APP_BUILD=9; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
 { const _v=document.getElementById('appVer'); if(_v) _v.textContent='Actualizado '+APP_VERSION.split('-').reverse().join('-')+' · v'+APP_BUILD; }
 
 const fbApp = initializeApp({
@@ -1339,6 +1339,15 @@ window.saveIngreso = async function(){
   loadStats();
 }
 
+// Patentes con pedidos GAMA aún no resueltos (Solicitado/Incorrecto = activo; Recibido/Instalado = terminal).
+// Es la fuente de verdad real para "¿tiene repuestos pendientes?" — NUNCA usar fecha_rep_pendiente/fecha_rep_recibido
+// para esto: esos dos campos son un flag manual (se limpia solo si alguien hace clic en "Repuestos recibidos" en
+// la vista Taller) que se desincroniza fácilmente del estado real de `pedidos` (bug reportado 2026-07-13).
+async function patentesConPedidosPendientes(){
+  const {data}=await sb.from('pedidos').select('patente').in('estado',['Solicitado','Incorrecto']);
+  return new Set((data||[]).map(p=>(p.patente||'').toUpperCase()));
+}
+
 async function renderSalidaList(q){
   const cont=document.getElementById('salidaList');
   cont.innerHTML='<div class="loading">Cargando...</div>';
@@ -1348,11 +1357,12 @@ async function renderSalidaList(q){
   salidaVehiculos={};
   (data||[]).forEach(v=>{salidaVehiculos[v.id]=v;});
   if(!data||!data.length){cont.innerHTML='<div class="empty">No hay vehículos activos'+(q?' con ese filtro':'')+'.</div>';return;}
+  const pendSet=await patentesConPedidosPendientes();
   cont.innerHTML=data.map(v=>`
     <div class="sal-item${salidaSelectedId===v.id?' selected':''}" onclick="selectSalida(${v.id},'${v.patente}','${v.taller}')">
       <div class="sal-left">
         <div class="sal-pat">${v.patente}</div>
-        <div class="sal-sub">Ingresó: ${td(v.ingreso)}${v.garantia?' · ★ Garantía':''}${v.particular?' · 👤 Particular':''}${v.grua?' · 🚛 Grúa':''}${v.fecha_rep_pendiente&&!v.fecha_rep_recibido?' · ⚠ Rep. pendientes':''}</div>
+        <div class="sal-sub">Ingresó: ${td(v.ingreso)}${v.garantia?' · ★ Garantía':''}${v.particular?' · 👤 Particular':''}${v.grua?' · 🚛 Grúa':''}${pendSet.has((v.patente||'').toUpperCase())?' · ⚠ Rep. pendientes':''}</div>
       </div>
       ${tallerBadge(v.taller)}
     </div>
@@ -1365,13 +1375,11 @@ window.doSalidaSearch = function(){
   renderSalidaList(document.getElementById('salidaSearch').value.trim());
 }
 
-window.selectSalida = function(id,pat,taller){
+window.selectSalida = async function(id,pat,taller){
   salidaSelectedId=id;
   renderSalidaList(document.getElementById('salidaSearch').value.trim());
-  const v=salidaVehiculos[id]||{};
-  const cl=parseChecklist(v.obs);
-  const gamaReps=(cl?.repuestos||[]).filter(r=>typeof r==='string'||r.origen==='GAMA');
-  const hasPendRep=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido&&gamaReps.length);
+  const {data:pedPend}=await sb.from('pedidos').select('id').eq('patente',pat).in('estado',['Solicitado','Incorrecto']).limit(1);
+  const hasPendRep=!!(pedPend&&pedPend.length);
   const aviso=hasPendRep?`<div style="background:var(--amber-bg);color:var(--amber-text);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px;font-weight:600;margin-top:10px;margin-bottom:10px">⚠ Sale con repuestos pendientes</div>`:'';
   document.getElementById('salidaConfirm').innerHTML=`
     <div class="confirm-box">
@@ -1391,17 +1399,18 @@ window.confirmSalida = async function(id, pat){
   const v=salidaVehiculos[id]||{};
   const clv=parseChecklist(v.obs);
   const todosReps=(clv?.repuestos||[]).map(normRep);
-  const gamaReps=todosReps.filter(r=>r.origen==='GAMA');
   const nuestrosReps=todosReps.filter(r=>r.origen==='nuestro');
-  const conPendientes=!!(v.fecha_rep_pendiente&&!v.fecha_rep_recibido&&gamaReps.length);
-  const{error}=await sb.from('vehiculos').update({salida:fecha,taller:'NA',salida_pendientes:conPendientes}).eq('id',id);
-  if(error){showToast('Error al guardar','err');return;}
-  // Eliminar pedidos activos para los repuestos marcados como "nuestro" (el taller los provee)
+  // Eliminar pedidos activos para los repuestos marcados como "nuestro" (el taller los provee) ANTES de
+  // evaluar pendientes, para que la evaluación refleje lo que de verdad queda activo en `pedidos`.
   if(nuestrosReps.length){
     for(const r of nuestrosReps){
       await sb.from('pedidos').delete().eq('patente',pat).filter('repuesto','ilike',r.nombre).in('estado',['Solicitado','Incorrecto']);
     }
   }
+  const {data:pedPend}=await sb.from('pedidos').select('id').eq('patente',pat).in('estado',['Solicitado','Incorrecto']).limit(1);
+  const conPendientes=!!(pedPend&&pedPend.length);
+  const{error}=await sb.from('vehiculos').update({salida:fecha,taller:'NA',salida_pendientes:conPendientes}).eq('id',id);
+  if(error){showToast('Error al guardar','err');return;}
   showToast('Salida de '+pat+(conPendientes?' · con rep. pendientes':'')+' registrada','ok');
   statsData=null;
   salidaSelectedId=null;
