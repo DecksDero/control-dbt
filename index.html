@@ -499,7 +499,7 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
       <button type="button" id="iParticular" data-v="0" onclick="toggleParticular()" style="padding:7px 18px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s">No</button>
     </div>
     <button id="btnImport" onclick="showPanel('import')" style="display:none;width:100%;padding:10px;border:1px dashed var(--border2);border-radius:var(--radius-sm);background:transparent;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:14px">Importar datos históricos</button>
-    <button class="big-btn btn-green" onclick="saveIngreso()">Registrar ingreso</button>
+    <button class="big-btn btn-green" id="btnIngresoSave" onclick="saveIngreso()">Registrar ingreso</button>
   </div>
 
   <!-- PANEL SALIDA -->
@@ -636,6 +636,7 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
         <div class="cl-add-row cl-add-row-rep" style="margin-top:4px">
           <input id="cl-rep-input" class="cl-rep-name" placeholder="Ej: paragolpe delantero..." onblur="clBuscarCodigo()" onkeydown="if(event.key==='Enter')clAddRepuesto()">
           <input id="cl-rep-codigo" class="cl-rep-cod" placeholder="Código..." onkeydown="if(event.key==='Enter')clAddRepuesto()">
+          <input id="cl-rep-precio" class="cl-rep-cod" type="number" min="0" step="1" placeholder="$ (si lo pone DBT)" title="Si ingresas un precio, el repuesto se crea como puesto por DBT ('nuestro'); si lo dejas vacío/0, se crea como GAMA (pide el proveedor)" onkeydown="if(event.key==='Enter')clAddRepuesto()">
           <button onclick="clAddRepuesto()">+ Agregar</button>
         </div>
         <div class="cl-section-label">Observaciones</div>
@@ -773,7 +774,7 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ⬆️ Sube esta fecha cada vez que se publique un cambio, para confirmar que la versión nueva ya cargó.
 const APP_VERSION='2026-07-27';
-const APP_BUILD=12; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
+const APP_BUILD=14; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
 { const _v=document.getElementById('appVer'); if(_v) _v.textContent='Actualizado '+APP_VERSION.split('-').reverse().join('-')+' · v'+APP_BUILD; }
 
 const fbApp = initializeApp({
@@ -1317,28 +1318,38 @@ window.toggleParticular = function(){
 }
 
 window.saveIngreso = async function(){
-  const pat=document.getElementById('iPatente').value.trim().toUpperCase();
-  const tal=document.getElementById('iTaller').value;
-  const ing=document.getElementById('iIngreso').value;
-  const obs=document.getElementById('iObs').value.trim();
-  const grua=document.getElementById('iGrua').dataset.v==='1';
-  const garantia=document.getElementById('iGarantia').dataset.v==='1';
-  const particular=document.getElementById('iParticular').dataset.v==='1';
-  if(!pat||!ing){showToast('Patente y fecha son obligatorias','err');return;}
-  const {data:exists}=await sb.from('vehiculos').select('id').eq('patente',pat).is('salida',null).maybeSingle();
-  if(exists){showToast(pat+' ya está activo en taller','err');return;}
-  const {error}=await sb.from('vehiculos').insert({patente:pat,taller:tal,ingreso:ing,obs:obs||null,grua:grua||null,garantia:garantia||null,particular:particular||null});
-  if(error){showToast('Error al guardar','err');return;}
-  showToast(pat+' registrado en '+tal+(grua?' · en grúa':'')+(garantia?' · garantía':'')+(particular?' · particular':''),'ok');
-  document.getElementById('iPatente').value='';
-  document.getElementById('iObs').value='';
-  const g=document.getElementById('iGrua');
-  g.dataset.v='0';g.textContent='No';g.style.background='';g.style.color='';g.style.borderColor='';
-  const gg=document.getElementById('iGarantia');
-  gg.dataset.v='0';gg.textContent='No';gg.style.background='';gg.style.color='';gg.style.borderColor='';
-  const gp=document.getElementById('iParticular');
-  gp.dataset.v='0';gp.textContent='No';gp.style.background='';gp.style.color='';gp.style.borderColor='';
-  loadStats();
+  // Guard anti-doble-submit: si la red va lenta y el usuario presiona 2 veces, el segundo clic
+  // debe ser un no-op mientras el primero sigue en curso (evita insertar la misma patente 2 veces).
+  const btn=document.getElementById('btnIngresoSave');
+  if(btn){ if(btn.disabled) return; btn.disabled=true; btn.textContent='Guardando...'; }
+  try{
+    const pat=document.getElementById('iPatente').value.trim().toUpperCase();
+    const tal=document.getElementById('iTaller').value;
+    const ing=document.getElementById('iIngreso').value;
+    const obs=document.getElementById('iObs').value.trim();
+    const grua=document.getElementById('iGrua').dataset.v==='1';
+    const garantia=document.getElementById('iGarantia').dataset.v==='1';
+    const particular=document.getElementById('iParticular').dataset.v==='1';
+    if(!pat||!ing){showToast('Patente y fecha son obligatorias','err');return;}
+    const {data:exists}=await sb.from('vehiculos').select('id').eq('patente',pat).is('salida',null).maybeSingle();
+    if(exists){showToast(pat+' ya está activo en taller','err');return;}
+    const {error}=await sb.from('vehiculos').insert({patente:pat,taller:tal,ingreso:ing,obs:obs||null,grua:grua||null,garantia:garantia||null,particular:particular||null});
+    if(error){showToast('Error al guardar','err');return;}
+    showToast(pat+' registrado en '+tal+(grua?' · en grúa':'')+(garantia?' · garantía':'')+(particular?' · particular':''),'ok');
+    document.getElementById('iPatente').value='';
+    document.getElementById('iObs').value='';
+    const g=document.getElementById('iGrua');
+    g.dataset.v='0';g.textContent='No';g.style.background='';g.style.color='';g.style.borderColor='';
+    const gg=document.getElementById('iGarantia');
+    gg.dataset.v='0';gg.textContent='No';gg.style.background='';gg.style.color='';gg.style.borderColor='';
+    const gp=document.getElementById('iParticular');
+    gp.dataset.v='0';gp.textContent='No';gp.style.background='';gp.style.color='';gp.style.borderColor='';
+    loadStats();
+  } finally {
+    // Se re-habilita siempre (éxito o error): el panel no se cierra solo tras guardar, el usuario
+    // puede seguir ingresando otra patente a continuación sin recargar/reabrir el panel.
+    if(btn){ btn.disabled=false; btn.textContent='Registrar ingreso'; }
+  }
 }
 
 // Patentes con pedidos GAMA aún no resueltos (Solicitado/Incorrecto = activo; Recibido/Instalado = terminal).
@@ -2101,7 +2112,12 @@ function clRenderReps(){
 }
 window.clAddTrabajo=function(){const inp=document.getElementById('cl-trab-input');const v=inp.value.trim();if(v&&!clFst.trabajos.includes(v)){clFst.trabajos.push(v);clRenderWorking();clAutoSave();}inp.value='';}
 window.clRemoveTrabajo=function(i){clFst.trabajos.splice(i,1);clRenderWorking();clAutoSave();}
-window.clAddRepuesto=function(){const inp=document.getElementById('cl-rep-input');const codInp=document.getElementById('cl-rep-codigo');const val=inp.value.trim();const cod=(codInp?codInp.value.trim():'')||clCodigosCache[clNorm(val)]||'';if(val&&!clFst.repuestos.some(r=>normRep(r).nombre.toLowerCase()===val.toLowerCase())){clFst.repuestos.push({nombre:val,origen:'GAMA',codigo:cod});clRenderReps();clAutoSave();}inp.value='';if(codInp)codInp.value='';}
+window.clAddRepuesto=function(){const inp=document.getElementById('cl-rep-input');const codInp=document.getElementById('cl-rep-codigo');const precioInp=document.getElementById('cl-rep-precio');const val=inp.value.trim();const cod=(codInp?codInp.value.trim():'')||clCodigosCache[clNorm(val)]||'';const precio=Math.max(0,parseInt(precioInp?precioInp.value:'',10)||0);
+  // Regla confirmada: si se ingresó precio>0 al crear el repuesto, se asume que lo pone DBT ('nuestro');
+  // sin precio (vacío o 0) queda como GAMA (comportamiento de siempre, sin cambios).
+  const origen=precio>0?'nuestro':'GAMA';
+  if(val&&!clFst.repuestos.some(r=>normRep(r).nombre.toLowerCase()===val.toLowerCase())){clFst.repuestos.push({nombre:val,origen,codigo:cod,precio});clRenderReps();clAutoSave();}
+  inp.value='';if(codInp)codInp.value='';if(precioInp)precioInp.value='';}
 window.clRemoveRepuesto=function(i){clFst.repuestos.splice(i,1);clRenderReps();clAutoSave();}
 // Setter expuesto en window (los handlers inline corren en scope global, no ven clFst — ver CLAUDE.md).
 // No re-renderiza para no perder el foco mientras se escribe; el valor ya está en el input.
