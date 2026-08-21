@@ -772,8 +772,8 @@ const SUPA_KEY = 'sb_publishable_tDwUhDHFTQUgQ78eFsL6Rw_h9_qKFXO';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ⬆️ Sube esta fecha cada vez que se publique un cambio, para confirmar que la versión nueva ya cargó.
-const APP_VERSION='2026-08-19';
-const APP_BUILD=16; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
+const APP_VERSION='2026-08-20';
+const APP_BUILD=17; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
 { const _v=document.getElementById('appVer'); if(_v) _v.textContent='Actualizado '+APP_VERSION.split('-').reverse().join('-')+' · v'+APP_BUILD; }
 
 const fbApp = initializeApp({
@@ -1168,9 +1168,26 @@ window.doSearch = async function(){
   const cont=document.getElementById('searchResults');
   if(q.length<2){cont.innerHTML='';return;}
   cont.innerHTML='<div class="loading">Buscando...</div>';
-  const {data}=await sb.from('vehiculos').select('*').ilike('patente','%'+q+'%').order('id',{ascending:false}).limit(10);
+  // Busca por patente O por texto libre en obs (donde vive el JSON del checklist, incluida marca/modelo) — sigue sin acotar a salida IS NULL.
+  const {data}=await sb.from('vehiculos').select('*').or('patente.ilike.%'+q+'%,obs.ilike.%'+q+'%').order('id',{ascending:false}).limit(20);
   if(!data||!data.length){cont.innerHTML='<div class="empty">Sin resultados para "'+q+'"</div>';return;}
-  cont.innerHTML=data.map(v=>{
+  // El match de obs es texto libre (podría caer en notas/observaciones/repuestos, no solo marca/modelo) — se confirma acá contra el checklist ya parseado para evitar falsos positivos.
+  const qLower=q.toLowerCase();
+  let filtrados=data.filter(v=>{
+    if(v.patente&&v.patente.toUpperCase().includes(q)) return true;
+    const cl=parseChecklist(v.obs);
+    const marca=(cl?.marca||'').toLowerCase();
+    const modelo=(cl?.modelo||'').toLowerCase();
+    return marca.includes(qLower)||modelo.includes(qLower);
+  });
+  if(!filtrados.length){cont.innerHTML='<div class="empty">Sin resultados para "'+q+'"</div>';return;}
+  // Coincidencias de patente primero, luego las de marca/modelo (orden estable conserva el id desc dentro de cada grupo).
+  filtrados.sort((a,b)=>{
+    const aPat=(a.patente&&a.patente.toUpperCase().includes(q))?0:1;
+    const bPat=(b.patente&&b.patente.toUpperCase().includes(q))?0:1;
+    return aPat-bPat;
+  });
+  cont.innerHTML=filtrados.map(v=>{
     const cl=parseChecklist(v.obs);
     const vehInfo=cl?[cl.marca,cl.modelo,cl.anio].filter(Boolean).join(' '):'';
     const trabajos=cl?.trabajos||[];
