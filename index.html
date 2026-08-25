@@ -571,6 +571,7 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
           <div class="cl-field"><label>Patente</label><input id="cl-patente" placeholder="ABCD-12" style="text-transform:uppercase" oninput="clAutoSave()"></div>
           <div class="cl-field"><label>Año</label><input id="cl-anio" type="number" placeholder="2024" oninput="clAutoSave()"></div>
         </div>
+        <div class="cl-field"><label>VIN</label><input id="cl-vin" placeholder="Número de chasis..." style="text-transform:uppercase" oninput="clAutoSave()"></div>
         <div class="cl-field"><label>Marca</label>
           <select id="cl-marca" onchange="clUpdateModelos();clAutoSave()">
             <option value="">Seleccionar...</option>
@@ -772,8 +773,8 @@ const SUPA_KEY = 'sb_publishable_tDwUhDHFTQUgQ78eFsL6Rw_h9_qKFXO';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ⬆️ Sube esta fecha cada vez que se publique un cambio, para confirmar que la versión nueva ya cargó.
-const APP_VERSION='2026-08-20';
-const APP_BUILD=17; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
+const APP_VERSION='2026-08-25';
+const APP_BUILD=18; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
 { const _v=document.getElementById('appVer'); if(_v) _v.textContent='Actualizado '+APP_VERSION.split('-').reverse().join('-')+' · v'+APP_BUILD; }
 
 const fbApp = initializeApp({
@@ -1532,6 +1533,7 @@ window.abrirPresupDetalle=function(patente){
     ['Tapiz',v.tapiz||'—'],
   ];
   if(v.luces) infoRows.push(['Luces tablero',v.luces]);
+  if(v.vin) infoRows.push(['VIN',v.vin]);
   infoRows.push(['Ingreso',v.ingreso||'—']);
   document.getElementById('pd-info-grid').innerHTML=infoRows.map(([l,val])=>`<div class="info-cell"><div class="info-cell-label">${l}</div><div class="info-cell-val">${val}</div></div>`).join('');
   const lista=vPresupuestos(v);
@@ -1773,6 +1775,7 @@ window.abrirChecklistInline=function(idx){
   document.getElementById('cl-patente').value=pat;
   document.getElementById('cl-anio').value=v.anio||'';
   document.getElementById('cl-km').value=v.km||'';
+  document.getElementById('cl-vin').value=v.vin||'';
   document.getElementById('cl-obs').value=p.notas||'';
   document.getElementById('cl-considerar').value=clFst.aConsiderar||'';
   document.getElementById('cl-otra-marca').value='';
@@ -1856,12 +1859,13 @@ function clBuildChecklistObj(){
   const modelo=modeloVal==='Otro'?(document.getElementById('cl-otro-modelo')?.value||''):modeloVal;
   const anio=document.getElementById('cl-anio')?.value||'';
   const km=document.getElementById('cl-km')?.value||'';
+  const vin=document.getElementById('cl-vin')?.value||'';
   const notas=document.getElementById('cl-obs')?.value||'';
   const obsTxt=clBuildObs()||'';
   const existing=parseChecklist(supavehiculos[pat]?.obs)||{};
   const extras=Array.isArray(existing.presupuestos)?existing.presupuestos.map(p=>({...p})):[];
   const cl={
-    marca:marca||'',modelo:modelo||'',anio:anio?parseInt(anio):null,km:km?parseInt(km):null,
+    marca:marca||'',modelo:modelo||'',anio:anio?parseInt(anio):null,km:km?parseInt(km):null,vin:vin||'',
     combustible:clFst.combustible||0,parabrisas:clFst.parabrisas||'',tapiz:clFst.tapiz||'',luces:clFst.luces||'',variante:clFst.variante||'',aConsiderar:clFst.aConsiderar||'',
     accesorios:clFst.accesorios||{},accesoriosQty:clFst.accesoriosQty||{},
     trabajos: clPresupIdx===0?(clFst.trabajos||[]):(existing.trabajos||[]),
