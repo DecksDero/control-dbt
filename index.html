@@ -27,6 +27,7 @@ if('serviceWorker' in navigator) {
 </script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <style>
 :root {
   --bg: #F5F4F0;
@@ -201,6 +202,24 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
 .col-total:last-child{border-right:none}
 .reporte-footer{margin-top:12px;display:flex;justify-content:space-between;font-size:11px;color:var(--text3)}
 .empty-col{font-size:11px;color:var(--text3);padding:8px 0;font-style:italic}
+/* Tablero de secciones (Kanban con arrastre) — panelTablero. Clases propias tb-*, NO reusa las del
+   reporte imprimible (reporte-header, col-header, col-body...): ese sigue sin controles interactivos. */
+.tb-board{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:8px;align-items:start}
+.tb-col{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);display:flex;flex-direction:column;min-height:120px;overflow:hidden}
+.tb-col-head{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:8px 8px;background:var(--text);color:#fff;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px}
+.tb-count{font-family:'DM Mono',monospace;font-weight:500;font-size:11px;background:rgba(255,255,255,.22);border-radius:20px;padding:1px 7px}
+.tb-col-body{padding:6px;display:flex;flex-direction:column;gap:6px;min-height:70px}
+.tb-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 8px;cursor:grab;touch-action:manipulation;user-select:none}
+.tb-readonly .tb-card{cursor:default}
+.tb-card-pat{font-family:'DM Mono',monospace;font-weight:600;font-size:13px;display:flex;align-items:center;gap:5px}
+.tb-card-sub{font-size:10.5px;color:var(--text3);margin-top:2px;line-height:1.35;word-break:break-word}
+.tb-card.tb-saving{opacity:.45;pointer-events:none}
+.tb-ghost{opacity:.4;background:var(--blue-bg);border-style:dashed}
+.tb-chosen{cursor:grabbing;box-shadow:0 4px 14px rgba(0,0,0,.16)}
+.tb-col-empty{font-size:11px;color:var(--text3);font-style:italic;text-align:center;padding:8px 6px 12px}
+.tb-hint{font-size:12.5px;color:var(--text2);line-height:1.5;margin-bottom:12px}
+.tb-bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.tb-bar button{padding:7px 12px;font-size:12.5px;font-weight:600;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer}
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--text);color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all .25s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.err{background:var(--red)}
@@ -275,6 +294,9 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
 .cl-tags-wrap{display:flex;flex-wrap:wrap;gap:6px;min-height:32px;margin-bottom:8px}
 .cl-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid var(--border2);border-radius:20px;font-size:12px;background:var(--surface2);color:var(--text2)}
 .cl-tag button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;line-height:1;padding:0}
+.cl-drag-handle{cursor:grab;color:var(--text3);font-size:13px;line-height:1;letter-spacing:-1px;touch-action:none;user-select:none;padding:0 1px}
+.cl-tag.sortable-ghost{opacity:.35}
+.cl-tag.sortable-chosen{box-shadow:0 0 0 2px var(--blue)}
 .cl-add-row{display:flex;gap:8px}
 .cl-add-row input{flex:1;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;padding:9px 12px;outline:none}
 .cl-add-row button{padding:9px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;cursor:pointer;white-space:nowrap}
@@ -430,6 +452,12 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
           <svg viewBox="0 0 24 24" stroke="#5521B5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         </div>
         <div class="act-label">Presupuestos</div>
+      </div>
+      <div class="act-btn" onclick="showPanel('tablero')">
+        <div class="act-icon" style="background:#E0E7FF">
+          <svg viewBox="0 0 24 24" stroke="#3730A3"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="9.5" y="3" width="5" height="12" rx="1"/><rect x="16" y="3" width="5" height="15" rx="1"/></svg>
+        </div>
+        <div class="act-label">Tablero secciones</div>
       </div>
       <div class="act-btn" onclick="showPanel('reporte')">
         <div class="act-icon" style="background:#FEF3C7">
@@ -679,6 +707,19 @@ input,select,textarea,button{font-family:'DM Sans',sans-serif}
     <div id="tallerList"></div>
   </div>
 
+  <!-- PANEL TABLERO (Kanban: arrastrar patentes entre secciones) -->
+  <div class="panel" id="panelTablero">
+    <div class="panel-header">
+      <button class="back-btn" onclick="closePanel()">← Volver</button>
+      <h2>Tablero de secciones</h2>
+    </div>
+    <div class="tb-hint" id="tableroHint"></div>
+    <div class="tb-bar">
+      <button onclick="renderTablero()">↻ Actualizar</button>
+    </div>
+    <div id="tableroBoard"></div>
+  </div>
+
   <!-- PANEL REPORTE -->
   <div class="panel" id="panelReporte">
     <div class="panel-header">
@@ -773,8 +814,8 @@ const SUPA_KEY = 'sb_publishable_tDwUhDHFTQUgQ78eFsL6Rw_h9_qKFXO';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ⬆️ Sube esta fecha cada vez que se publique un cambio, para confirmar que la versión nueva ya cargó.
-const APP_VERSION='2026-09-01';
-const APP_BUILD=19; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
+const APP_VERSION='2026-09-04';
+const APP_BUILD=22; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
 { const _v=document.getElementById('appVer'); if(_v) _v.textContent='Actualizado '+APP_VERSION.split('-').reverse().join('-')+' · v'+APP_BUILD; }
 
 const fbApp = initializeApp({
@@ -856,7 +897,7 @@ let clPresupIdx=0; // presupuesto que se está editando (0 = principal/top-level
 let clStep=0;
 let clFst={combustible:0,parabrisas:'',tapiz:'',luces:'',variante:'',aConsiderar:'',trabajos:[],repuestos:[],accesorios:{},accesoriosQty:{}};
 let clCodigosCache={};
-const ALL_PANELS=['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelReporte','panelEstadisticas','panelAdmin','panelPresupDetalle','panelChecklist','panelRepuestos','panelFecha'];
+const ALL_PANELS=['panelSearch','panelIngreso','panelSalida','panelPendientes','panelImport','panelTaller','panelTablero','panelReporte','panelEstadisticas','panelAdmin','panelPresupDetalle','panelChecklist','panelRepuestos','panelFecha'];
 
 function activarPanel(id){
   document.getElementById('homeView').style.display='none';
@@ -991,10 +1032,14 @@ function repStatusHTML(v){
   return '';
 }
 
-function showToast(msg, type='ok'){
+// ms: opcional (default 2500, ningún llamado histórico cambia). Sirve para mensajes de error largos
+// que necesitan más tiempo en pantalla — mismo patrón que showToast de Repuestos.
+let _toastTimer=null;
+function showToast(msg, type='ok', ms=2500){
   const t=document.getElementById('toast');
   t.textContent=msg; t.className='toast '+type+' show';
-  setTimeout(()=>t.classList.remove('show'),2500);
+  if(_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>t.classList.remove('show'),ms);
 }
 
 window.doLogin = async function(){
@@ -1145,6 +1190,7 @@ window.showPanel = function(name){
   if(name==='salida'){document.getElementById('salidaSearch').value='';document.getElementById('salidaConfirm').innerHTML='';salidaSelectedId=null;renderSalidaList('');}
   if(name==='pendientes'){document.getElementById('bnav-pendientes').classList.add('active');renderPendientes();}
   if(name==='reporte'){renderReportePreview();}
+  if(name==='tablero'){renderTablero();}
   if(name==='estadisticas'){document.getElementById('bnav-estadisticas').classList.add('active');statsData=null;renderEstadisticas();}
   if(name==='repuestos'){document.getElementById('bnav-repuestos').classList.add('active');}
   if(name==='fecha'){
@@ -2113,7 +2159,7 @@ window.clChangeQty=function(key,delta){
 }
 function clRenderWorking(){
   const area=document.getElementById('cl-trabajos-tags');if(!area)return;area.innerHTML='';
-  clFst.trabajos.forEach((t,i)=>{const tag=document.createElement('span');tag.className='cl-tag';tag.innerHTML=`${t} <button onclick="clRemoveTrabajo(${i})">×</button>`;area.appendChild(tag);});
+  clFst.trabajos.forEach((t,i)=>{const tag=document.createElement('span');tag.className='cl-tag';tag.innerHTML=`<span class="cl-drag-handle" title="Arrastrar para reordenar">⠿</span>${t} <button onclick="clRemoveTrabajo(${i})">×</button>`;area.appendChild(tag);});
 }
 function clRenderReps(){
   const area=document.getElementById('cl-rep-tags');if(!area)return;area.innerHTML='';
@@ -2125,10 +2171,39 @@ function clRenderReps(){
     const precioHtml=nr.origen==='nuestro'
       ?` <span style="font-size:10px;font-weight:700;color:var(--blue)">$</span><input type="number" min="0" step="1" value="${nr.precio||''}" placeholder="0" oninput="clSetPrecioRep(${i},this.value)" title="Precio que DBT le cobra al cliente" style="width:78px;margin-left:2px;padding:1px 4px;font-size:11px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)">`
       :'';
-    tag.innerHTML=`${nr.nombre}${nr.codigo?` <span style="font-size:10px;opacity:.65;font-family:monospace">${nr.codigo}</span>`:''}${precioHtml} <button onclick="clRemoveRepuesto(${i})">×</button>`;
+    tag.innerHTML=`<span class="cl-drag-handle" title="Arrastrar para reordenar">⠿</span>${nr.nombre}${nr.codigo?` <span style="font-size:10px;opacity:.65;font-family:monospace">${nr.codigo}</span>`:''}${precioHtml} <button onclick="clRemoveRepuesto(${i})">×</button>`;
     area.appendChild(tag);
   });
 }
+// Reordenar por arrastre (SortableJS, buen soporte touch — un drag nativo HTML5 con draggable="true"
+// no funciona bien en navegadores móviles, y estas listas se editan mucho desde tablet/celular en el taller).
+// Los contenedores #cl-trabajos-tags/#cl-rep-tags son HTML estático presente desde la carga de la página
+// (el paso 2 del checklist solo se oculta/muestra por CSS), así que basta una sola inicialización aquí;
+// cada render (clRenderWorking/clRenderReps) solo reemplaza los <span> hijos, no el contenedor mismo.
+// El handle (.cl-drag-handle) es obligatorio: sin él, arrastrar desde cualquier punto del tag chocaría
+// con el botón "×" de borrar y, en repuestos, con el input de precio.
+function clInitSortableTags(){
+  if(typeof Sortable==='undefined')return; // CDN no disponible (ej. sin internet): el checklist sigue funcionando, solo sin reordenar
+  const trabArea=document.getElementById('cl-trabajos-tags');
+  if(trabArea){
+    Sortable.create(trabArea,{handle:'.cl-drag-handle',animation:150,onEnd:function(evt){
+      if(evt.oldIndex===evt.newIndex||evt.oldIndex==null||evt.newIndex==null)return;
+      const moved=clFst.trabajos.splice(evt.oldIndex,1)[0];
+      clFst.trabajos.splice(evt.newIndex,0,moved);
+      clRenderWorking();clAutoSave();
+    }});
+  }
+  const repArea=document.getElementById('cl-rep-tags');
+  if(repArea){
+    Sortable.create(repArea,{handle:'.cl-drag-handle',animation:150,onEnd:function(evt){
+      if(evt.oldIndex===evt.newIndex||evt.oldIndex==null||evt.newIndex==null)return;
+      const moved=clFst.repuestos.splice(evt.oldIndex,1)[0];
+      clFst.repuestos.splice(evt.newIndex,0,moved);
+      clRenderReps();clAutoSave();
+    }});
+  }
+}
+clInitSortableTags();
 window.clAddTrabajo=function(){const inp=document.getElementById('cl-trab-input');const v=inp.value.trim();if(v&&!clFst.trabajos.includes(v)){clFst.trabajos.push(v);clRenderWorking();clAutoSave();}inp.value='';}
 window.clRemoveTrabajo=function(i){clFst.trabajos.splice(i,1);clRenderWorking();clAutoSave();}
 window.clAddRepuesto=function(){const inp=document.getElementById('cl-rep-input');const codInp=document.getElementById('cl-rep-codigo');const precioInp=document.getElementById('cl-rep-precio');const val=inp.value.trim();const cod=(codInp?codInp.value.trim():'')||clCodigosCache[clNorm(val)]||'';const precio=Math.max(0,parseInt(precioInp?precioInp.value:'',10)||0);
@@ -2689,13 +2764,124 @@ window.setStatsRepModelo = function(m){ statsRepModelo=m; statsRepVariante=''; r
 window.setStatsRepVariante = function(v){ statsRepVariante=v; renderEstadisticasVista(); }
 window.switchStatsRepGran = function(g){ statsRepGran=g; renderEstadisticasVista(); }
 
+// ── Vehículos activos agrupados por sección ───────────────────────────────────
+// Fuente común del reporte imprimible (renderReportePreview) y del tablero Kanban (renderTablero).
+// Mismo query de siempre: salida IS NULL, ordenado por taller y luego ingreso ascendente.
+const TALLER_COLS = ['PINTURA','RILDO','TERMINACION'];
+const TALLER_LABEL = {PINTURA:'Pintura',RILDO:'Rildo',TERMINACION:'Terminación'};
+async function fetchActivosPorTaller(){
+  const {data} = await sb.from('vehiculos').select('*').is('salida',null).order('taller').order('ingreso',{ascending:true});
+  const grupos = {PINTURA:[],RILDO:[],TERMINACION:[]};
+  (data||[]).forEach(v=>{ if(grupos[v.taller]) grupos[v.taller].push(v); });
+  return {data:data||[], grupos};
+}
+
+// ── TABLERO DE SECCIONES (Kanban) ─────────────────────────────────────────────
+// Vista editable, separada a propósito del reporte imprimible: acá se arrastran patentes entre
+// Pintura/Rildo/Terminación y cada drop persiste el cambio de `taller` en Supabase.
+let tableroSortables = []; // instancias de Sortable vivas (se destruyen y recrean en cada render)
+
+function tbEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function tbCard(v){
+  const cl = parseChecklist(v.obs) || {};
+  const mm = [cl.marca,cl.modelo].filter(Boolean).join(' ');
+  const dias = diasEnTaller(v.ingreso,null);
+  const flags = (v.garantia?'★ ':'')+(v.particular?'👤 ':'')+(v.grua?'🚛 ':'');
+  return `<div class="tb-card" data-vid="${v.id}" data-pat="${tbEsc(v.patente)}" data-taller="${tbEsc(v.taller)}" title="${tbEsc(v.patente)}${mm?' · '+tbEsc(mm):''}">
+    <div class="tb-card-pat">${tbEsc(v.patente)}</div>
+    <div class="tb-card-sub">${flags}${mm?tbEsc(mm)+' · ':''}${dias!=null?dias+' d':''}</div>
+  </div>`;
+}
+
+window.renderTablero = async function(){
+  const board = document.getElementById('tableroBoard');
+  const hint = document.getElementById('tableroHint');
+  board.innerHTML = '<div class="loading">Cargando tablero...</div>';
+  hint.textContent = window.canChangeTaller
+    ? 'Arrastra una patente de una columna a otra para cambiarle la sección. El cambio se guarda al soltar.'
+    : 'Solo lectura: tu rol no permite reasignar secciones.';
+  const {data,grupos} = await fetchActivosPorTaller();
+  if(!data.length){ board.innerHTML='<div class="empty">Sin vehículos activos.</div>'; return; }
+  board.innerHTML = `<div class="tb-board${window.canChangeTaller?'':' tb-readonly'}">
+    ${TALLER_COLS.map(t=>`
+      <div class="tb-col">
+        <div class="tb-col-head">${TALLER_LABEL[t]} <span class="tb-count" id="tb-count-${t}">${grupos[t].length}</span></div>
+        <div class="tb-col-body" id="tb-col-${t}" data-taller="${t}">${grupos[t].map(tbCard).join('')}</div>
+        <div class="tb-col-empty" id="tb-empty-${t}" style="display:${grupos[t].length?'none':'block'}">${window.canChangeTaller?'Suelta una patente aquí':'Sin vehículos'}</div>
+      </div>
+    `).join('')}
+  </div>`;
+  tbInitSortable();
+}
+
+// El contador y el placeholder de columna vacía se recalculan del DOM, no de un array — así quedan
+// correctos tanto tras un drop exitoso como tras revertir uno fallido.
+function tbRefrescarColumnas(){
+  TALLER_COLS.forEach(t=>{
+    const body=document.getElementById('tb-col-'+t); if(!body) return;
+    const n=body.children.length;
+    const cnt=document.getElementById('tb-count-'+t); if(cnt) cnt.textContent=n;
+    const empty=document.getElementById('tb-empty-'+t); if(empty) empty.style.display=n?'none':'block';
+  });
+}
+
+function tbInitSortable(){
+  tableroSortables.forEach(s=>{try{s.destroy();}catch(e){}});
+  tableroSortables=[];
+  // Permisos: sin canChangeTaller ni siquiera se instancia el drag (no basta con fallar en el PATCH).
+  if(!window.canChangeTaller) return;
+  if(typeof Sortable==='undefined') return; // CDN caído: el tablero sigue sirviendo como vista de solo lectura
+  TALLER_COLS.forEach(t=>{
+    const el=document.getElementById('tb-col-'+t); if(!el) return;
+    tableroSortables.push(Sortable.create(el,{
+      group:'tablero-secciones',
+      animation:150,
+      ghostClass:'tb-ghost',
+      chosenClass:'tb-chosen',
+      // delayOnTouchOnly: en tablet/celular el arrastre arranca tras una pausa breve, así el scroll
+      // vertical del tablero sigue funcionando con el dedo. En desktop el drag es inmediato.
+      delay:160, delayOnTouchOnly:true, touchStartThreshold:6,
+      onEnd: tbOnEnd
+    }));
+  });
+}
+
+async function tbOnEnd(evt){
+  const item=evt.item, from=evt.from, to=evt.to;
+  const destino=to.dataset.taller, origen=from.dataset.taller;
+  if(!destino||destino===origen){ tbRefrescarColumnas(); return; } // reordenar dentro de la misma columna: sin efecto en BD
+  const id=Number(item.dataset.vid), pat=item.dataset.pat;
+  item.classList.add('tb-saving');
+  try{
+    // Se actualiza por `id` (la fila que se renderizó, que ya vino del query con salida IS NULL) y
+    // ADEMÁS se exige `salida IS NULL`: una patente puede tener varias filas históricas, así que nunca
+    // se toca una cerrada, y si el vehículo salió del taller mientras el tablero estaba abierto el
+    // update afecta 0 filas y se revierte en vez de escribir sobre datos viejos.
+    const {data,error}=await sb.from('vehiculos').update({taller:destino}).eq('id',id).is('salida',null).select('id');
+    if(error) throw new Error(error.message||'error de Supabase');
+    if(!data||!data.length) throw new Error('ya no está activo en taller');
+    item.dataset.taller=destino;
+    tbRefrescarColumnas();
+    showToast(pat+' → '+TALLER_LABEL[destino],'ok');
+    statsData=null; // invalida el cache de Estadísticas (distribución por sección)
+    loadStats();
+  }catch(e){
+    // Revertir visualmente: la UI nunca debe quedar mostrando una sección que no está en la BD.
+    const ref=from.children[evt.oldIndex];
+    if(ref) from.insertBefore(item,ref); else from.appendChild(item);
+    tbRefrescarColumnas();
+    showToast('No se movió '+pat+': '+(e.message||'error'),'err',5000);
+  }finally{
+    item.classList.remove('tb-saving');
+  }
+}
+
 async function renderReportePreview(){
   const prev = document.getElementById('reportePreview');
   prev.innerHTML='<div class="loading">Generando reporte...</div>';
-  const {data} = await sb.from('vehiculos').select('*').is('salida',null).order('taller').order('ingreso',{ascending:true});
-  if(!data||!data.length){prev.innerHTML='<div class="empty">Sin vehículos activos.</div>';return;}
-  const grupos = {PINTURA:[],RILDO:[],TERMINACION:[]};
-  data.forEach(v=>{ if(grupos[v.taller]) grupos[v.taller].push(v); });
+  const {data,grupos} = await fetchActivosPorTaller();
+  if(!data.length){prev.innerHTML='<div class="empty">Sin vehículos activos.</div>';return;}
   const hoy = new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const semana = `Viernes ${new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'})}`;
   prev.innerHTML = `
