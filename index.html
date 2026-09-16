@@ -814,8 +814,8 @@ const SUPA_KEY = 'sb_publishable_tDwUhDHFTQUgQ78eFsL6Rw_h9_qKFXO';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ⬆️ Sube esta fecha cada vez que se publique un cambio, para confirmar que la versión nueva ya cargó.
-const APP_VERSION='2026-09-04';
-const APP_BUILD=22; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
+const APP_VERSION='2026-09-16';
+const APP_BUILD=23; // sube +1 en cada cambio (aunque sea el mismo día) para distinguir versiones tras recargar
 { const _v=document.getElementById('appVer'); if(_v) _v.textContent='Actualizado '+APP_VERSION.split('-').reverse().join('-')+' · v'+APP_BUILD; }
 
 const fbApp = initializeApp({
@@ -985,7 +985,7 @@ async function loadSupavehiculos(){
     const cl=parseChecklist(v.obs);
     supavehiculos[pat]={
       ...v,patente:pat,estado:estadoFromObs(v.obs)||'Pendiente de datos',
-      marca:cl?.marca||'',modelo:cl?.modelo||'',anio:cl?.anio||null,km:cl?.km||null,
+      marca:cl?.marca||'',modelo:cl?.modelo||'',anio:cl?.anio||null,km:cl?.km||null,vin:cl?.vin||'',
       combustible:cl?.combustible||0,parabrisas:cl?.parabrisas||'',tapiz:cl?.tapiz||'',luces:cl?.luces||'',variante:cl?.variante||'',fechaEnvioCliente:cl?.fechaEnvioCliente||'',aConsiderar:cl?.aConsiderar||'',
       accesorios:cl?.accesorios||{},accesoriosQty:cl?.accesoriosQty||{},
       trabajos:cl?.trabajos||[],repuestos:cl?.repuestos||[],notas:cl?.notas||'',observaciones:cl?.observaciones||'',
